@@ -106,7 +106,7 @@ export function WelcomeScreen({
       </button>
 
       <p className="tiny muted center" style={{ marginTop: 4 }}>
-        Kairós · El momento de entrenar
+        Kairós · Registro de entrenamiento
       </p>
     </div>
   )

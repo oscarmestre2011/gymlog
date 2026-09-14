@@ -263,7 +263,7 @@ export function SettingsScreen({
           <KairosMark size={58} titulo="Kairós" />
           <div>
             <div style={{ fontWeight: 700, fontSize: '1.02rem' }}>Kairós</div>
-            <div className="tiny muted">El momento de entrenar</div>
+            <div className="tiny muted">Registro de entrenamiento</div>
           </div>
         </div>
 
@@ -273,7 +273,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.0.7</span>
+          <span className="v">1.0.8</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>
@@ -285,9 +285,8 @@ export function SettingsScreen({
         </div>
 
         <p className="tiny muted" style={{ marginTop: 10, marginBottom: 8 }}>
-          Nace del podcast <b>Kairós</b>, sobre entrenar a partir de los 50 años. Kairós guarda todo en
-          el almacenamiento local del navegador (IndexedDB): no envía nada a ningún sitio y nadie más
-          puede ver tus entrenamientos.
+          Kairós guarda todo en el almacenamiento local del navegador (IndexedDB): no envía nada a
+          ningún sitio y nadie más puede ver tus entrenamientos.
         </p>
         <p className="tiny muted" style={{ marginBottom: 0 }}>
           Para instalarla: en Android, menú ⋮ → «Instalar aplicación»; en iPhone, Safari → Compartir →
