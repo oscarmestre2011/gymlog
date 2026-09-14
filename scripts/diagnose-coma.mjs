@@ -9,6 +9,7 @@
  * Uso:  node scripts/diagnose-coma.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -48,7 +49,7 @@ const browser = await chromium.launch()
 const context = await browser.newContext({ ...devices['Pixel 7'], locale: 'es-ES' })
 const page = await context.newPage()
 await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' })
-await page.waitForSelector('.nav', { timeout: 25000 })
+await esperarApp(page, 25000)
 
 /** Escribe caracter a caracter y registra lo que queda en el campo. */
 async function teclear(campo, texto, etiqueta) {

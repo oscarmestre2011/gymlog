@@ -259,7 +259,7 @@ export function SettingsScreen({
         <h2 className="card-title">Acerca de</h2>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.0.5</span>
+          <span className="v">1.0.6</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

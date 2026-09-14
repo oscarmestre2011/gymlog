@@ -17,6 +17,7 @@
  * Uso:  node scripts/test-update-keeps-data.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat, writeFile, mkdir, rm, readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -174,7 +175,7 @@ try {
   /* -------------------- 1. Instalar la version A -------------------- */
   console.log('1) Se instala la version A')
   await page.goto(`http://localhost:${PORT}${SUBPATH}`, { waitUntil: 'networkidle' })
-  await page.waitForSelector('.nav', { timeout: 25000 })
+  await esperarApp(page, 25000)
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(2000)
   const sw = await page.evaluate(async () => {
@@ -233,7 +234,7 @@ try {
 
   /* --------------- 4. Los entrenamientos siguen ahi? ---------------- */
   console.log('\n4) Comprobacion clave: sigue el entrenamiento guardado?')
-  await page.waitForSelector('.nav', { timeout: 25000 })
+  await esperarApp(page, 25000)
   await page.waitForTimeout(1500)
   const despues = await page.locator('body').innerText()
   check('La sesion sigue en el historial tras actualizar', despues.includes('Fuerza A'), despues.slice(0, 70).replace(/\n/g, ' '))

@@ -13,6 +13,7 @@
  * Uso:  node scripts/reproduce-stale.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat, writeFile, mkdir, rm, cp } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -119,7 +120,7 @@ try {
 
   console.log('3) Visita inicial con la version A (como el dia que se instalo)')
   await page.goto(`http://localhost:${PORT}${SUBPATH}`, { waitUntil: 'networkidle' })
-  await page.waitForSelector('.nav', { timeout: 20000 })
+  await esperarApp(page, 20000)
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(2000)
   console.log(`   ${JSON.stringify(await estado())}`)

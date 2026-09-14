@@ -9,6 +9,7 @@
  * Uso:  node scripts/update-banner.mjs   (requiere dist/ compilado con base /gymlog/)
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -65,7 +66,7 @@ try {
   const page = await context.newPage()
 
   await page.goto(`http://localhost:${PORT}/gymlog/`, { waitUntil: 'networkidle' })
-  await page.waitForSelector('.nav', { timeout: 20000 })
+  await esperarApp(page, 20000)
   await page.waitForTimeout(800)
 
   check('En condiciones normales NO aparece el aviso', (await page.locator('.update-banner').count()) === 0)
@@ -103,7 +104,7 @@ try {
   const navigated = page.waitForEvent('framenavigated', { timeout: 15000 }).then(() => true).catch(() => false)
   await page.locator('.update-banner button', { hasText: 'Actualizar' }).click()
   check('El boton Actualizar recarga la app', await navigated)
-  await page.waitForSelector('.nav', { timeout: 20000 })
+  await esperarApp(page, 20000)
   check('Tras actualizar la app sigue funcionando', await page.locator('.nav').isVisible())
 } finally {
   await browser.close()

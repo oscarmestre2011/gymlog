@@ -12,6 +12,7 @@
  *   node scripts/update-behavior.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat, mkdir, cp, rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -115,7 +116,7 @@ try {
 
   console.log('--- 1) Primera visita (como el dia que la instalaste) ---')
   await page.goto(`${ORIGIN}${SUBPATH}`, { waitUntil: 'networkidle' })
-  await page.waitForSelector('.nav', { timeout: 20000 })
+  await esperarApp(page, 20000)
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(1500)
   let estado = await versionVisible()

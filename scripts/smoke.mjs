@@ -8,6 +8,7 @@
  * Por defecto usa http://localhost:5273 (el servidor de `npm run preview`).
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -54,10 +55,28 @@ async function shot(name) {
   await page.screenshot({ path: join(shotsDir, `${name}.png`), fullPage: true })
 }
 
+/**
+ * La primera vez que se abre la app sale la pantalla de bienvenida. Se cierra para
+ * poder probar el resto. Se comprueba aqui mismo que aparece, porque forma parte
+ * de lo que ve alguien que instala la app.
+ */
+async function pasarBienvenida() {
+  const hayBienvenida = (await page.locator('text=Bienvenido a GymLog').count()) > 0
+  check('La primera vez aparece la bienvenida', hayBienvenida)
+  if (hayBienvenida) {
+    await shot('00-bienvenida')
+    await page.getByText('Ya lo veré luego').click()
+    await page.waitForTimeout(800)
+  }
+}
+
 try {
   /* ------------------------- 1. arranque y sembrado ------------------------ */
   await page.goto(baseUrl, { waitUntil: 'networkidle' })
-  await page.waitForSelector('.nav', { timeout: 20000 })
+  // Se espera a que aparezca la app o la bienvenida (lo que llegue antes).
+  await page.waitForTimeout(2500)
+  await pasarBienvenida()
+  await esperarApp(page, 20000)
   await page.waitForTimeout(600)
 
   check('La app carga sin errores de JavaScript', errors.length === 0, errors.join(' | '))
@@ -200,7 +219,7 @@ try {
   /* --------------------- 9. persistencia tras recargar -------------------- */
   // Se recarga directamente: la sesión abierta debe recuperarse sola.
   await page.reload({ waitUntil: 'networkidle' })
-  await page.waitForSelector('.nav', { timeout: 15000 })
+  await esperarApp(page, 15000)
   await page.waitForTimeout(900)
   const afterReload = await page.locator('body').innerText()
   check('La sesión en curso sobrevive a recargar', afterReload.includes('Terminar y guardar') && afterReload.includes('3 series'), afterReload.slice(0, 130).replace(/\n/g, ' '))

@@ -21,9 +21,11 @@
     "test:install": "node scripts/installability.mjs",
     "test:keep-data": "node scripts/test-update-keeps-data.mjs",
     "test:safari": "node scripts/verify-safari.mjs",
+    "test:welcome": "node scripts/test-welcome.mjs",
+    "test:multi-device": "node scripts/test-multi-device.mjs",
     "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
     "verify": "npm run typecheck && npm run test && npm run build",
-    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari"
+    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari && npm run test:welcome && npm run test:multi-device"
   },
   "dependencies": {
     "dexie": "^4.0.10",

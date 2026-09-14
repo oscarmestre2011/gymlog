@@ -15,6 +15,7 @@ import type { ExerciseSet, Routine, Session, Settings } from './types'
 import { DEFAULT_SETTINGS } from './types'
 import { useRestTimer } from './hooks'
 import { HomeScreen } from './screens/HomeScreen'
+import { WelcomeScreen } from './screens/WelcomeScreen'
 import { SessionScreen } from './screens/SessionScreen'
 import { RoutinesScreen } from './screens/RoutinesScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
@@ -71,6 +72,12 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   const [startupError, setStartupError] = useState<string | null>(null)
   /** Cambiarlo fuerza un nuevo intento de arranque. */
   const [startupAttempt, setStartupAttempt] = useState(0)
+  /**
+   * La bienvenida se muestra solo la primera vez. Vive en los ajustes y no en
+   * localStorage, para que viaje con la copia de seguridad y no vuelva a salir si
+   * alguien restaura sus datos en un movil nuevo.
+   */
+  const [verBienvenida, setVerBienvenida] = useState(false)
 
   const rest = useRestTimer(settings.soundOn, settings.vibrateOn)
 
@@ -114,6 +121,8 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
       const [cfg, active] = await Promise.all([getSettings(), getActiveSession()])
       if (!alive) return
       setSettings(cfg)
+      // Si es la primera vez y no hay una sesion a medias, se explica que es esto.
+      if (!cfg.hasSeenWelcome && !active) setVerBienvenida(true)
       if (active) {
         setSession(active)
         setSets(await listSets(active.id))
@@ -230,6 +239,22 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
           <div className="spinner" />
           <p className="center small muted">Abriendo tus entrenamientos…</p>
         </div>
+      </div>
+    )
+  }
+
+  // Bienvenida: se muestra una sola vez, sin barra de navegacion, para explicar
+  // que es la app, que trae y donde van los datos antes de empezar a usarla.
+  if (verBienvenida) {
+    return (
+      <div className="app">
+        <WelcomeScreen
+          onDone={() => setVerBienvenida(false)}
+          onStartFresh={() => {
+            setVerBienvenida(false)
+            void handleStart(undefined, todayISO())
+          }}
+        />
       </div>
     )
   }

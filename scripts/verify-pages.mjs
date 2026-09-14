@@ -14,6 +14,7 @@
  * Uso:  node scripts/verify-pages.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat, rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -116,7 +117,7 @@ try {
 
   /* 2. La app carga y funciona en la subcarpeta */
   await page.goto(base, { waitUntil: 'networkidle' })
-  await page.waitForSelector('.nav', { timeout: 20000 })
+  await esperarApp(page, 20000)
   await page.waitForTimeout(700)
   const homeText = await page.locator('body').innerText()
   check('La app arranca servida desde /gymlog/', homeText.includes('Empezar entrenamiento'))
@@ -163,7 +164,7 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => null)
   let offlineOk = true
   try {
-    await page.waitForSelector('.nav', { timeout: 20000 })
+    await esperarApp(page, 20000)
   } catch {
     offlineOk = false
   }

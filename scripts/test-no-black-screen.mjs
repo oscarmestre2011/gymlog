@@ -12,6 +12,7 @@
  * Uso:  node scripts/test-no-black-screen.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -123,7 +124,7 @@ try {
   const context2 = await browser.newContext({ ...devices['Pixel 7'], locale: 'es-ES' })
   const page2 = await context2.newPage()
   await page2.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' })
-  await page2.waitForSelector('.nav', { timeout: 20000 })
+  await esperarApp(page2, 20000)
   check('Con el almacenamiento sano, la app arranca normalmente', await page2.locator('.nav').isVisible())
   await context2.close()
 } finally {

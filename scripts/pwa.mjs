@@ -8,6 +8,7 @@
  * Uso:  node scripts/pwa.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
@@ -79,7 +80,7 @@ function info(message) {
 /** Intenta cargar la app y devuelve el texto visible, o null si no llego a montarse. */
 async function readApp(page, timeout = 25000) {
   try {
-    await page.waitForSelector('.nav', { timeout })
+    await esperarApp(page, timeout)
   } catch {
     return null
   }

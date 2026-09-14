@@ -151,6 +151,8 @@ export interface Settings {
   /** Descarga automatica de copia de seguridad (semanas, 0 = desactivado). */
   autoBackupWeeks: number
   lastBackupAt?: number
+  /** Si ya se ha mostrado la pantalla de bienvenida (se muestra una sola vez). */
+  hasSeenWelcome?: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -160,6 +162,7 @@ export const DEFAULT_SETTINGS: Settings = {
   vibrateOn: true,
   autoStartRest: true,
   autoBackupWeeks: 0,
+  hasSeenWelcome: false,
 }
 
 /** Formato de fichero de copia de seguridad. */

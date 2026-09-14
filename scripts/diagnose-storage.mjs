@@ -9,6 +9,7 @@
  * Uso:  node scripts/diagnose-storage.mjs
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { createServer } from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
@@ -56,7 +57,7 @@ async function probar(nombre, initScript) {
   await page.goto(`http://localhost:${PORT}/`, { waitUntil: 'networkidle' }).catch(() => null)
   let monto = true
   try {
-    await page.waitForSelector('.nav', { timeout: 12000 })
+    await esperarApp(page, 12000)
   } catch {
     monto = false
   }

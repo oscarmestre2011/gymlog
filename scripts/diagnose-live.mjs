@@ -9,6 +9,7 @@
  * Uso:  node scripts/diagnose-live.mjs [url]
  */
 import { chromium, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -50,7 +51,7 @@ async function escenario(nombre, preparar) {
 
     let monto = true
     try {
-      await page.waitForSelector('.nav', { timeout: 20000 })
+      await esperarApp(page, 20000)
     } catch {
       monto = false
     }

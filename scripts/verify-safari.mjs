@@ -9,6 +9,7 @@
  * Con la direccion publicada por defecto.
  */
 import { webkit, devices } from 'playwright'
+import { esperarApp } from './helpers.mjs'
 import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -41,7 +42,7 @@ try {
   const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 })
   check('Safari carga la app', response?.status() === 200, `HTTP ${response?.status()}`)
 
-  await page.waitForSelector('.nav', { timeout: 40000 })
+  await esperarApp(page, 40000)
   await page.waitForTimeout(1200)
   const home = await page.locator('body').innerText()
   check('La app se monta en Safari', home.includes('Empezar entrenamiento'))
@@ -142,7 +143,7 @@ try {
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 40000 }).catch(() => null)
   let offlineOk = true
   try {
-    await page.waitForSelector('.nav', { timeout: 30000 })
+    await esperarApp(page, 30000)
   } catch {
     offlineOk = false
   }
