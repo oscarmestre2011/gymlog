@@ -23,6 +23,19 @@ function check(name, condition, detail = '') {
   console.log(`${condition ? 'OK  ' : 'FALLO'} ${name}${detail ? ` — ${detail}` : ''}`)
 }
 
+/**
+ * Volumen que se espera al final del recorrido, calculado a partir de lo que se
+ * registra: 50x10 (primera serie) + 52,5x8 (prueba de la coma) + 52,5x8 (repetir).
+ * Se calcula en vez de escribirlo a mano, para que anadir una serie no obligue a
+ * adivinar el total.
+ */
+const VOLUMEN_TOTAL = 50 * 10 + 52.5 * 8 + 52.5 * 8
+
+/** Acepta "1340" y "1.340" (el formato español lleva punto de millares). */
+const VOLUMEN_ESPERADO = new RegExp(
+  `(${VOLUMEN_TOTAL}|${VOLUMEN_TOTAL.toLocaleString('es-ES')}) kg`,
+)
+
 const browser = await chromium.launch()
 const context = await browser.newContext({
   ...devices['Pixel 7'],
@@ -103,14 +116,31 @@ try {
   const restClock = await page.locator('.rest-bar .clock').innerText()
   check('El descanso arranca con la cuenta atrás', /^\d{2}:\d{2}$/.test(restClock), restClock)
 
+  /* ------------- 4b. la coma decimal (regresión de un fallo real) --------- */
+  // El campo convertía a número en cada pulsación, así que la coma se perdía y
+  // "52,5" acababa siendo "525". Se teclea carácter a carácter para comprobarlo.
+  const pesoNuevo = firstCard.locator('input[aria-label="Peso de la nueva serie"]')
+  await pesoNuevo.click()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type('52,5')
+  const pesoEscrito = await pesoNuevo.inputValue()
+  check('Se puede escribir un decimal con coma en el peso', pesoEscrito === '52,5', `quedó "${pesoEscrito}"`)
+
+  const repsNuevo = firstCard.locator('input[aria-label="Repeticiones de la nueva serie"]')
+  await repsNuevo.click()
+  await page.keyboard.press('Control+A')
+  await page.keyboard.type('8')
+  const guardarNueva = firstCard.locator('button[aria-label="Guardar serie"]')
+  await guardarNueva.click()
+  await page.waitForTimeout(900)
+  const conDecimal = await page.locator('body').innerText()
+  check('El decimal se guarda correctamente', conDecimal.includes('52,5'), conDecimal.match(/[\d,]+×52,5kg/)?.[0] ?? conDecimal.match(/52,5[^\n]{0,20}/)?.[0] ?? '')
+
   // Repetir la última serie (el gesto más habitual).
   await firstCard.getByText('Repetir última').click()
-  await page.waitForTimeout(600)
+  await page.waitForTimeout(700)
   const afterRepeat = await page.locator('body').innerText()
-  check('El botón de repetir añade otra serie', afterRepeat.includes('2 series'))
-
-  // El resumen del ejercicio debe reflejar lo registrado.
-  check('Se resume el ejercicio en formato del vault', afterRepeat.includes('2×10×50kg'), afterRepeat.match(/2×10×50kg[^\n]*/)?.[0] ?? '')
+  check('El botón de repetir añade otra serie', /3 series/.test(afterRepeat), afterRepeat.match(/\d+ series/)?.[0] ?? '')
 
   await shot('05-sesion-con-series')
 
@@ -135,7 +165,7 @@ try {
   await page.getByRole('button', { name: 'Volver' }).click()
   await page.waitForSelector('.exercise-card', { timeout: 8000 })
   const backText = await page.locator('body').innerText()
-  check('Se puede volver a la sesión desde el aviso', backText.includes('Back squat') && backText.includes('2 series'))
+  check('Se puede volver a la sesión desde el aviso', backText.includes('Back squat') && backText.includes('3 series'))
   await page.getByText('☰').click()
   await page.waitForTimeout(400)
 
@@ -173,7 +203,7 @@ try {
   await page.waitForSelector('.nav', { timeout: 15000 })
   await page.waitForTimeout(900)
   const afterReload = await page.locator('body').innerText()
-  check('La sesión en curso sobrevive a recargar', afterReload.includes('Terminar y guardar') && afterReload.includes('2 series'), afterReload.slice(0, 140).replace(/\n/g, ' '))
+  check('La sesión en curso sobrevive a recargar', afterReload.includes('Terminar y guardar') && afterReload.includes('3 series'), afterReload.slice(0, 130).replace(/\n/g, ' '))
   check('Tras recargar se vuelve directamente a la sesión', afterReload.includes('Back squat'))
   await shot('09-tras-recargar')
 
@@ -181,13 +211,13 @@ try {
   await page.getByText('Terminar y guardar').click()
   await page.waitForSelector('.modal', { timeout: 8000 })
   const confirmText = await page.locator('.modal').innerText()
-  check('La confirmación resume lo que se va a guardar', /2 series/.test(confirmText) && /1000 kg/.test(confirmText), confirmText.replace(/\n/g, ' '))
+  check('La confirmación resume lo que se va a guardar', /3 series/.test(confirmText) && VOLUMEN_ESPERADO.test(confirmText), confirmText.replace(/\n/g, ' '))
   await page.locator('.modal').getByRole('button', { name: 'Terminar', exact: true }).click()
   await page.waitForTimeout(1400)
 
   const homeText = await page.locator('body').innerText()
-  check('La sesión guardada aparece en el historial', homeText.includes('Fuerza A') && homeText.includes('2 series'))
-  check('El volumen se refleja en las estadísticas', homeText.includes('1.000 kg') || homeText.includes('1000 kg'))
+  check('La sesión guardada aparece en el historial', homeText.includes('Fuerza A') && homeText.includes('3 series'))
+  check('El volumen se refleja en las estadísticas', VOLUMEN_ESPERADO.test(homeText), homeText.match(/[\d.,]+ kg/g)?.slice(0, 4).join(' / ') ?? '')
   await shot('10-inicio-con-historial')
 
   check('No ha habido errores de JavaScript en todo el recorrido', errors.length === 0, errors.join(' | '))

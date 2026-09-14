@@ -607,9 +607,10 @@ function SetRow({
     setRir(set.rir)
   }, [set.weight, set.reps, set.rir])
 
-  const commit = () => {
-    if (weight === set.weight && reps === set.reps && rir === set.rir) return
-    void onSave(entry, { weight: weight ?? 0, reps: reps ?? 0, rir }, set, false)
+  // Al salir del campo se guarda. Se usa el valor que devuelve onCommit, ya
+  // ajustado, para no depender de que el estado se haya actualizado a tiempo.
+  const commit = (valor?: number) => {
+    void onSave(entry, { weight: valor ?? 0, reps: reps ?? 0, rir }, set, false)
   }
 
   return (
@@ -618,9 +619,8 @@ function SetRow({
       <NumberInput
         value={weight}
         onChange={setWeight}
-        onCommit={commit}
+        onCommit={(v) => commit(v)}
         ariaLabel={`Peso serie ${set.setNumber}`}
-        light
       />
       <NumberInput
         value={reps}
@@ -628,7 +628,6 @@ function SetRow({
         onCommit={commit}
         ariaLabel={`Repeticiones serie ${set.setNumber}`}
         integer
-        light
       />
       <NumberInput
         value={rir}
@@ -636,7 +635,6 @@ function SetRow({
         onCommit={commit}
         ariaLabel={`RIR serie ${set.setNumber}`}
         integer
-        light
         placeholder="—"
       />
       <div className="actions">
@@ -725,7 +723,6 @@ function NewSetRow({
           onChange={setWeight}
           placeholder="0"
           ariaLabel="Peso de la nueva serie"
-          light
         />
         <NumberInput
           value={reps}
@@ -733,9 +730,8 @@ function NewSetRow({
           placeholder={targetLabel(entry.targetRepsMin, entry.targetRepsMax)}
           ariaLabel="Repeticiones de la nueva serie"
           integer
-          light
         />
-        <NumberInput value={rir} onChange={setRir} placeholder="—" ariaLabel="RIR de la nueva serie" integer light />
+        <NumberInput value={rir} onChange={setRir} placeholder="—" ariaLabel="RIR de la nueva serie" integer />
         <button
           className="icon-btn"
           style={{

@@ -273,6 +273,7 @@ function CardioEditor({
           <NumberInput
             value={draft.distanceKm}
             onChange={(v) => setDraft({ ...draft, distanceKm: v })}
+            onCommit={(v) => setDraft((d) => ({ ...d, distanceKm: v }))}
             placeholder="42,27"
             ariaLabel="Distancia en kilómetros"
           />
@@ -282,6 +283,7 @@ function CardioEditor({
           <NumberInput
             value={draft.elevationM}
             onChange={(v) => setDraft({ ...draft, elevationM: v })}
+            onCommit={(v) => setDraft((d) => ({ ...d, elevationM: v }))}
             placeholder="190"
             integer
             ariaLabel="Desnivel en metros"
