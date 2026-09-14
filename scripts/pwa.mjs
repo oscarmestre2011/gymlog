@@ -118,7 +118,7 @@ async function waitForCacheReady(page, timeout = 15000) {
   const started = Date.now()
   while (Date.now() - started < timeout) {
     const state = await page.evaluate(async () => {
-      const cache = await caches.open('gymlog-v3')
+      const cache = await caches.open('gymlog-v4')
       const keys = await cache.keys()
       const paths = keys.map((request) => new URL(request.url).pathname)
       const hasHtml = paths.some((path) => path.endsWith('/') || path.endsWith('index.html'))
@@ -130,7 +130,7 @@ async function waitForCacheReady(page, timeout = 15000) {
     await page.waitForTimeout(400)
   }
   return page.evaluate(async () => {
-    const cache = await caches.open('gymlog-v3')
+    const cache = await caches.open('gymlog-v4')
     const keys = await cache.keys()
     const paths = keys.map((request) => new URL(request.url).pathname)
     return {

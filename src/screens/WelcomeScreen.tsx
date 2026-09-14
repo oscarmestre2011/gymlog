@@ -31,7 +31,7 @@ export function WelcomeScreen({
     <div className="screen welcome">
       <div className="welcome-hero">
         <div className="welcome-logo">
-          <KairosMark size={84} titulo="Kairós" />
+          <KairosMark size={104} grande titulo="Kairós" />
         </div>
         <h2>Bienvenido a Kairós</h2>
         <p className="muted">

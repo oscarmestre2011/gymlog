@@ -18,9 +18,19 @@
  * Al cambiar este archivo, sube VERSION.
  */
 
-const VERSION = 'v3'
+const VERSION = 'v4'
 const CACHE = `gymlog-${VERSION}`
-const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png']
+const APP_SHELL = [
+  './',
+  './index.html',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png',
+  // El emblema que se ve dentro de la app: sin el, la cabecera y la bienvenida
+  // saldrian sin logo cuando no hay conexion.
+  './logo-mark.png',
+  './logo-mark-grande.png',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

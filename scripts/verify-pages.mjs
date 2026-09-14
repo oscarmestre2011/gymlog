@@ -145,7 +145,7 @@ try {
     const registration = await navigator.serviceWorker.getRegistration()
     if (!registration) return { ok: false }
     const scope = new URL(registration.scope).pathname
-    const cache = await caches.open('gymlog-v3')
+    const cache = await caches.open('gymlog-v4')
     const keys = await cache.keys()
     return {
       ok: Boolean(registration.active),

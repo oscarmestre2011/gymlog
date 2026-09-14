@@ -260,7 +260,7 @@ export function SettingsScreen({
         <h2 className="card-title">Acerca de</h2>
 
         <div className="about-head">
-          <KairosMark size={54} titulo="Kairós" />
+          <KairosMark size={58} titulo="Kairós" />
           <div>
             <div style={{ fontWeight: 700, fontSize: '1.02rem' }}>Kairós</div>
             <div className="tiny muted">El momento de entrenar</div>
