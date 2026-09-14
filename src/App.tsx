@@ -22,14 +22,34 @@ import { CardioScreen } from './screens/CardioScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
 import { RestBar } from './components/RestBar'
 import { RoutinePicker } from './components/RoutinePicker'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { StartupError } from './components/StartupError'
 import { todayISO, weekdayName } from './lib/format'
 
 export type Tab = 'inicio' | 'rutinas' | 'progreso' | 'cardio' | 'ajustes'
 
 /** Datos de una serie nueva, tal y como los acepta el almacen. */
+/** Tiempo maximo que se espera al almacenamiento local antes de dar error. */
+const STARTUP_TIMEOUT_MS = 10000
+
 export type NewSetInput = Parameters<typeof addSet>[0]
 
+/**
+ * Arranque de la app.
+ *
+ * Envuelve todo en una red de seguridad y controla el arranque: si el
+ * almacenamiento del movil no responde, se muestra un error con salida en lugar
+ * de dejar la pantalla oscura esperando para siempre.
+ */
 export function App({ updateEvent = 'gymlog:update-ready' }: { updateEvent?: string } = {}) {
+  return (
+    <ErrorBoundary>
+      <AppContent updateEvent={updateEvent} />
+    </ErrorBoundary>
+  )
+}
+
+function AppContent({ updateEvent }: { updateEvent: string }) {
   const [ready, setReady] = useState(false)
   const [tab, setTab] = useState<Tab>('inicio')
   const [session, setSession] = useState<Session | null>(null)
@@ -47,6 +67,10 @@ export function App({ updateEvent = 'gymlog:update-ready' }: { updateEvent?: str
   const [refreshKey, setRefreshKey] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
   const [updateReady, setUpdateReady] = useState(false)
+  /** Si el arranque ha fallado, se guarda el motivo para poder explicarlo. */
+  const [startupError, setStartupError] = useState<string | null>(null)
+  /** Cambiarlo fuerza un nuevo intento de arranque. */
+  const [startupAttempt, setStartupAttempt] = useState(0)
 
   const rest = useRestTimer(settings.soundOn, settings.vibrateOn)
 
@@ -65,9 +89,27 @@ export function App({ updateEvent = 'gymlog:update-ready' }: { updateEvent?: str
   }, [])
 
   /* ------------------------------ arranque ------------------------------ */
+  /**
+   * El arranque lleva tiempo limite a proposito. Si el almacenamiento del movil
+   * no responde, esperar para siempre deja la pantalla oscura sin explicacion: el
+   * peor fallo posible, porque el usuario no sabe si esperar o cerrar la app.
+   */
   useEffect(() => {
     let alive = true
-    ;(async () => {
+
+    const timeout = new Promise<never>((_, reject) => {
+      window.setTimeout(
+        () =>
+          reject(
+            new Error(
+              `El almacenamiento del móvil no ha respondido en ${STARTUP_TIMEOUT_MS / 1000} segundos.`,
+            ),
+          ),
+        STARTUP_TIMEOUT_MS,
+      )
+    })
+
+    const iniciar = async () => {
       if (await needsSeed()) await seedIfEmpty()
       const [cfg, active] = await Promise.all([getSettings(), getActiveSession()])
       if (!alive) return
@@ -77,12 +119,19 @@ export function App({ updateEvent = 'gymlog:update-ready' }: { updateEvent?: str
         setSets(await listSets(active.id))
         setViewingSession(true)
       }
+      setStartupError(null)
       setReady(true)
-    })().catch(() => setReady(true))
+    }
+
+    Promise.race([iniciar(), timeout]).catch((error: unknown) => {
+      if (!alive) return
+      setStartupError(error instanceof Error ? error.message : String(error))
+    })
+
     return () => {
       alive = false
     }
-  }, [])
+  }, [startupAttempt])
 
   const notify = useCallback((message: string) => {
     setToast(message)
@@ -158,10 +207,29 @@ export function App({ updateEvent = 'gymlog:update-ready' }: { updateEvent?: str
 
   /* -------------------------------- render ------------------------------- */
 
+  // Arranque fallido: se explica el motivo en lugar de dejar la pantalla oscura.
+  if (startupError) {
+    return (
+      <div className="app">
+        <StartupError
+          message={startupError}
+          onRetry={() => {
+            setStartupError(null)
+            setStartupAttempt((n) => n + 1)
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Cargando: se dice lo que esta pasando, para que no parezca una pantalla negra.
   if (!ready) {
     return (
       <div className="app">
-        <div className="spinner" />
+        <div className="screen" style={{ justifyContent: 'center', minHeight: '70dvh' }}>
+          <div className="spinner" />
+          <p className="center small muted">Abriendo tus entrenamientos…</p>
+        </div>
       </div>
     )
   }

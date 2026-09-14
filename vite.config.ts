@@ -30,6 +30,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
-    environmentMatchGlobs: [['src/db/**/*.test.ts', 'jsdom']],
+    // Las pruebas que tocan la interfaz o la base de datos necesitan un navegador simulado.
+    environmentMatchGlobs: [
+      ['src/db/**/*.test.ts', 'jsdom'],
+      ['src/components/**/*.test.tsx', 'jsdom'],
+    ],
   },
 } as never)
