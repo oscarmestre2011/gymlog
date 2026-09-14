@@ -98,6 +98,41 @@ try {
   check('Al descartarlo desaparece', (await page.locator('.update-banner').count()) === 0)
   check('Descartarlo no recarga ni pierde el estado', await page.locator('.nav').isVisible())
 
+  /*
+   * Regresion de un fallo real: el service worker guardaba el HTML con una clave y lo
+   * buscaba con otra, asi que servia la copia ANTIGUA aunque tuviera la nueva (se veian
+   * hasta tres entradas "/index.html" distintas en la misma cache). Consecuencia: la app
+   * se quedaba en la version anterior y el aviso de version nueva no saltaba.
+   *
+   * Se comprueba que la cache no tiene claves duplicadas y que el HTML guardado es el
+   * mismo que el publicado.
+   */
+  const cache = await page.evaluate(async () => {
+    const nombres = await caches.keys()
+    if (nombres.length === 0) return { sinCache: true, duplicadas: [], rutas: [] }
+    const abierta = await caches.open(nombres[0])
+    const peticiones = await abierta.keys()
+    const rutas = peticiones.map((p) => new URL(p.url).pathname)
+    const duplicadas = rutas.filter((r, i) => rutas.indexOf(r) !== i)
+
+    const guardado = await abierta.match(new Request('./index.html', { credentials: 'same-origin' }))
+    const htmlGuardado = guardado ? await guardado.text() : ''
+    const publicado = await fetch(`./index.html?comprobar=${Date.now()}`, { cache: 'no-store' }).then((r) => r.text())
+    const saca = (html) => /index-[A-Za-z0-9_-]+\.js/.exec(html)?.[0] ?? '?'
+    return { rutas, duplicadas, guardado: saca(htmlGuardado), publicado: saca(publicado) }
+  })
+
+  check(
+    'La caché no tiene claves duplicadas',
+    (cache.duplicadas ?? []).length === 0,
+    (cache.duplicadas ?? []).join(', ') || `${(cache.rutas ?? []).length} claves`,
+  )
+  check(
+    'El HTML guardado es el mismo que el publicado (no sirve copia vieja)',
+    !cache.sinCache && Boolean(cache.guardado) && cache.guardado === cache.publicado,
+    `guardado: ${cache.guardado} / publicado: ${cache.publicado}`,
+  )
+
   // Volver a mostrarlo y pulsar Actualizar: debe recargar la app.
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('gymlog:update-ready')))
   await page.waitForSelector('.update-banner', { timeout: 8000 })

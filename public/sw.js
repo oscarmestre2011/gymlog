@@ -18,8 +18,11 @@
  * Al cambiar este archivo, sube VERSION.
  */
 
-const VERSION = 'v4'
+const VERSION = 'v6'
 const CACHE = `gymlog-${VERSION}`
+/** Tiempo maximo que se espera a la red al abrir la app, antes de usar la copia. */
+const LIMITE_NAVEGACION_MS = 2500
+
 const APP_SHELL = [
   './',
   './index.html',
@@ -59,14 +62,57 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+/**
+ * Clave con la que se guarda y se busca en la cache.
+ *
+ * IMPORTANTE: siempre la misma para una misma direccion. Antes se guardaba el HTML con
+ * un objeto Request y se buscaba con otro de configuracion distinta, y la busqueda
+ * acababa devolviendo una copia vieja: la app servia el HTML anterior aunque el nuevo
+ * estuviera ya en la cache (se veian incluso tres entradas "/gymlog/index.html"
+ * distintas en la misma cache). Se normalizan a una unica clave por direccion.
+ */
+function claveDe(request) {
+  const url = new URL(request.url)
+  return new Request(url.origin + url.pathname, { method: 'GET' })
+}
+
 /** Guarda una respuesta valida en cache sin bloquear la respuesta al cliente. */
 async function store(request, response) {
   try {
     const cache = await caches.open(CACHE)
-    await cache.put(request, response)
+    await cache.put(claveDe(request), response)
   } catch {
     /* cuota llena o respuesta no cacheable: no es critico */
   }
+}
+
+/** Busca en cache usando siempre la misma clave. */
+async function buscar(request) {
+  try {
+    const cache = await caches.open(CACHE)
+    return (await cache.match(claveDe(request))) ?? null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Espera una promesa como maximo `ms` milisegundos. Si tarda mas, devuelve null y se
+ * sigue por otro camino (la copia guardada), en lugar de dejar al usuario esperando.
+ */
+function conLimite(promesa, ms) {
+  return new Promise((resolve) => {
+    const temporizador = setTimeout(() => resolve(null), ms)
+    promesa
+      .then((valor) => {
+        clearTimeout(temporizador)
+        resolve(valor)
+      })
+      .catch(() => {
+        clearTimeout(temporizador)
+        resolve(null)
+      })
+  })
 }
 
 /**
@@ -74,8 +120,8 @@ async function store(request, response) {
  * La respuesta al cliente sale de inmediato: la app nunca espera al servidor.
  */
 async function cacheFirst(request, options = {}) {
-  const cached = await caches.match(request)
-  const background = fetch(request)
+  const cached = await buscar(request)
+  const background = fetch(claveDe(request))
     .then(async (response) => {
       if (response && response.ok && response.type !== 'opaque') {
         await store(request, response.clone())
@@ -92,11 +138,14 @@ async function cacheFirst(request, options = {}) {
   const fresh = await background
   if (fresh) return fresh
 
-  const fallback = await caches.match('./index.html')
-  return fallback ?? new Response('Sin conexión y sin copia en caché.', {
-    status: 503,
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-  })
+  const fallback = await buscar(new Request('./index.html', { credentials: 'same-origin' }))
+  return (
+    fallback ??
+    new Response('Sin conexión y sin copia en caché.', {
+      status: 503,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    })
+  )
 }
 
 self.addEventListener('fetch', (event) => {
@@ -106,15 +155,33 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
-  // Navegaciones (abrir la app, recargar): cache primero para arrancar siempre.
+  // Navegaciones (abrir la app, recargar): RED PRIMERO, con la copia como respaldo.
+  //
+  // Antes era "cache primero" para arrancar siempre rapido, pero eso hacia que al abrir
+  // la app siguiera saliendo la version anterior aunque hubiera una nueva publicada:
+  // parecia que el cambio no habia llegado. Ahora se pide a la red con un tiempo limite
+  // corto (2,5 s): si responde, se ve la version nueva al momento; si no hay conexion o
+  // va muy lenta, se usa la copia guardada y la app arranca igual sin cobertura.
   if (request.mode === 'navigate') {
+    const indice = new Request('./index.html', { credentials: 'same-origin' })
     event.respondWith(
-      cacheFirst(new Request('./index.html', { credentials: 'same-origin' }), { noRevalidate: false })
-        .then(async (response) => {
-          // Se guarda tambien bajo la ruta pedida (por ejemplo "/" o "/index.html").
-          if (response.ok) await store(request, response.clone())
-          return response
-        }),
+      (async () => {
+        const copia = await buscar(indice)
+        const respuestaRed = await conLimite(fetch(claveDe(indice)), LIMITE_NAVEGACION_MS)
+        if (respuestaRed && respuestaRed.ok) {
+          await store(indice, respuestaRed.clone())
+          await store(request, respuestaRed.clone())
+          return respuestaRed
+        }
+        if (copia) return copia
+        return (
+          respuestaRed ??
+          new Response('Sin conexión y sin copia en caché.', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        )
+      })(),
     )
     return
   }
@@ -128,7 +195,7 @@ self.addEventListener('fetch', (event) => {
   // usa la copia guardada, asi que la instalacion sigue funcionando offline.
   if (url.pathname.endsWith('.webmanifest')) {
     event.respondWith(
-      fetch(request)
+      fetch(claveDe(request))
         .then(async (response) => {
           if (response && response.ok && response.type !== 'opaque') {
             await store(request, response.clone())
@@ -136,8 +203,8 @@ self.addEventListener('fetch', (event) => {
           return response
         })
         .catch(async () => {
-          const cached = await caches.match(request)
-          return cached ?? caches.match('./manifest.webmanifest')
+          const cached = await buscar(request)
+          return cached ?? buscar(new Request('./manifest.webmanifest'))
         }),
     )
     return

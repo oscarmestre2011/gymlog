@@ -17,6 +17,7 @@
     "test:pages": "node scripts/verify-pages.mjs",
     "test:live": "node scripts/verify-live.mjs",
     "test:update": "node scripts/update-banner.mjs",
+    "test:update-real": "node scripts/test-update-real.mjs",
     "test:black-screen": "node scripts/test-no-black-screen.mjs",
     "test:install": "node scripts/installability.mjs",
     "test:keep-data": "node scripts/test-update-keeps-data.mjs",
@@ -29,7 +30,8 @@
     "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari && npm run test:welcome && npm run test:multi-device && npm run test:rename",
     "icons": "node scripts/make-icons.mjs",
     "check:mark": "node scripts/check-mark.mjs",
-    "measure:logo": "node scripts/measure-logo.mjs"
+    "measure:logo": "node scripts/measure-logo.mjs",
+    "diagnose:update": "node scripts/diagnose-update.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.10",
