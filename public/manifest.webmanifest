@@ -1,8 +1,9 @@
 {
+  "id": "./",
   "name": "GymLog — Registro de entrenamiento",
   "short_name": "GymLog",
   "description": "Anota series, rutinas, progresión y cardio. Funciona sin conexión y guarda todo en tu móvil.",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
