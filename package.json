@@ -24,9 +24,12 @@
     "test:welcome": "node scripts/test-welcome.mjs",
     "test:multi-device": "node scripts/test-multi-device.mjs",
     "test:rename": "node scripts/test-rename.mjs",
-    "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
     "verify": "npm run typecheck && npm run test && npm run build",
-    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari && npm run test:welcome && npm run test:multi-device && npm run test:rename"
+    "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
+    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari && npm run test:welcome && npm run test:multi-device && npm run test:rename",
+    "icons": "node scripts/make-icons.mjs",
+    "check:mark": "node scripts/check-mark.mjs",
+    "measure:logo": "node scripts/measure-logo.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.10",

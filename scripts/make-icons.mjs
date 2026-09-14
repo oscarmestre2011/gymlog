@@ -93,9 +93,24 @@ const generado = await page.evaluate(
       { x: 0.3, y: 0.94, ancho: 0.45, alto: 0.06 }, // puntas centrales
     ]
 
-    /** Emblema recortado, encajado en un cuadrado y centrado sobre fondo carbon. */
+    /**
+     * Emblema recortado, con FONDO TRANSPARENTE.
+     *
+     * El fondo del logo es carbon: se vuelve transparente para poder poner el emblema
+     * sobre la interfaz sin que se vea el recuadro. Antes se dejaba el fondo opaco y en
+     * la pantalla de bienvenida se notaba un cuadrado mas claro que el fondo de la app.
+     *
+     * Las zonas "tapar" ya no hacen falta: al hacer transparente el carbon desaparecen
+     * solas las motas de texto que quedaban dentro del recorte.
+     */
     const emblema = (size) => {
-      const { canvas, ctx } = nuevoLienzo(size)
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+
       const relacion = zona.ancho / zona.alto
       let anchoDestino = size
       let altoDestino = size / relacion
@@ -105,7 +120,10 @@ const generado = await page.evaluate(
       }
       const x = (size - anchoDestino) / 2
       const y = (size - altoDestino) / 2
-      // Se recortan las esquinas inferiores por donde entraba el texto.
+
+      // Se recortan las esquinas inferiores: justo debajo del anillo queda el borde
+      // superior del texto "KAIROS". El emblema es redondo, asi que esas esquinas
+      // estan vacias y no se pierde nada.
       ctx.save()
       ctx.beginPath()
       const corte = size * 0.3
@@ -120,18 +138,70 @@ const generado = await page.evaluate(
       ctx.drawImage(imagen, zona.x, zona.y, zona.ancho, zona.alto, x, y, anchoDestino, altoDestino)
       ctx.restore()
 
-      // Se tapan los restos de texto que quedan dentro del recorte.
-      ctx.fillStyle = carbon
-      for (const zonaTapar of tapar) {
-        ctx.fillRect(
-          zonaTapar.x * size,
-          zonaTapar.y * size,
-          zonaTapar.ancho * size,
-          zonaTapar.alto * size,
-        )
+      // Se borra lo que quede FUERA del anillo en la mitad inferior del recorte.
+      //
+      // Justo debajo del anillo asoma el borde superior del texto "KAIROS" (el acento
+      // de la O y las puntas de las letras). Recortar mas por abajo cortaria las
+      // zapatillas del corredor, asi que en su lugar se calcula el circulo del anillo
+      // y se hace transparente todo lo que caiga fuera de el en esa zona: por ahi solo
+      // hay fondo y restos de texto.
+      //
+      // El centro y el radio salen de los datos medidos (ver scripts/measure-logo.mjs):
+      // el emblema ocupa de x=147 a x=1106, asi que el centro esta en x=626,5.
+      const centroX = (147 + 1106) / 2
+      const centroY = 456 // centro vertical del anillo dentro de la imagen original
+      // El radio se amplia un 18% sobre el del anillo: asi se borra tambien la franja
+      // inmediatamente exterior, donde caen las puntas de las letras del texto, sin
+      // tocar el anillo.
+      const radioAnillo = ((1106 - 147) / 2) * 1.18
+
+      const datos = ctx.getImageData(0, 0, size, size)
+      const px = datos.data
+      const UMBRAL_BAJO = 34
+      const UMBRAL_ALTO = 48
+
+      // Como se proyecta el recorte en el lienzo cuadrado, para pasar de un pixel del
+      // lienzo a su posicion en la imagen original.
+      const escala = altoDestino / zona.alto
+      const aOriginalX = (x0) => zona.x + (x0 - x) / escala
+      const aOriginalY = (y0) => zona.y + (y0 - y) / escala
+
+      for (let py2 = 0; py2 < size; py2 += 1) {
+        for (let px2 = 0; px2 < size; px2 += 1) {
+          const i = (py2 * size + px2) * 4
+
+          // 1) El carbon del fondo pasa a transparente, con transicion suave para que
+          //    no quede un halo gris alrededor del anillo.
+          const claridad = Math.max(px[i], px[i + 1], px[i + 2])
+          if (claridad < UMBRAL_ALTO) {
+            const alfa =
+              claridad <= UMBRAL_BAJO ? 0 : 1 - (claridad - UMBRAL_BAJO) / (UMBRAL_ALTO - UMBRAL_BAJO)
+            px[i + 3] = Math.round(px[i + 3] * (1 - alfa))
+          }
+
+          // 2) Restos del texto "KAIROS" que asoman por debajo del anillo.
+          //
+          //    a) La tilde de la O: al medirla resulta estar MAS CERCA del centro que el
+          //       anillo, asi que la mascara radial no la alcanza. Se borra con una banda
+          //       horizontal en la zona donde empieza el texto, por encima del borde
+          //       inferior del recorte para no rozar el anillo.
+          //    b) Fuera del anillo en la mitad inferior: puntas de las letras.
+          const oy = aOriginalY(py2 + 0.5)
+          const ox = aOriginalX(px2 + 0.5)
+          const enBandaDeTexto = py2 / size > 0.845 && py2 / size < 0.97
+          if (enBandaDeTexto) {
+            px[i + 3] = 0
+          } else if (oy > centroY) {
+            const distancia = Math.hypot(ox - centroX, oy - centroY)
+            if (distancia > radioAnillo) px[i + 3] = 0
+          }
+        }
       }
+      ctx.putImageData(datos, 0, 0)
       return canvas.toDataURL('image/png')
     }
+
+    void tapar
 
     return {
       logo192: logoCompleto(192),
