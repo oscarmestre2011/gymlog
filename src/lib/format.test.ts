@@ -6,6 +6,7 @@ import {
   formatClock,
   formatDuration,
   formatHoursMinutes,
+  formatKilograms,
   formatKilometers,
   formatNumber,
   groupByExercise,
@@ -93,6 +94,33 @@ describe('numeros con coma decimal', () => {
     expect(formatNumber(52.5)).toBe('52,5')
     expect(formatNumber(60)).toBe('60')
     expect(formatNumber(17.25)).toBe('17,25')
+  })
+
+  it('pone el punto de millares, como se escribe en castellano', () => {
+    expect(formatNumber(1000)).toBe('1.000')
+    expect(formatNumber(1340)).toBe('1.340')
+    expect(formatNumber(12345)).toBe('12.345')
+    expect(formatNumber(1234567)).toBe('1.234.567')
+    // Con decimales: el punto va en la parte entera y la coma en la decimal.
+    expect(formatNumber(1234.56)).toBe('1.234,56')
+    expect(formatNumber(999)).toBe('999')
+  })
+})
+
+describe('totales en kilos', () => {
+  it('da el peso total exacto, con millares y sin ceros de relleno', () => {
+    expect(formatKilograms(1340)).toBe('1.340 kg')
+    expect(formatKilograms(1240.5)).toBe('1.240,5 kg')
+    expect(formatKilograms(1234.56)).toBe('1.234,56 kg')
+    expect(formatKilograms(500)).toBe('500 kg')
+    expect(formatKilograms(0)).toBe('0 kg')
+  })
+
+  it('conserva los decimales de la suma, sin redondear a kilos enteros', () => {
+    // 52,5 x 10 + 47,5 x 8 = 525 + 380 = 905
+    expect(formatKilograms(52.5 * 10 + 47.5 * 8)).toBe('905 kg')
+    // 2,5 x 3 = 7,5: el medio kilo no debe desaparecer
+    expect(formatKilograms(2.5 * 3)).toBe('7,5 kg')
   })
 })
 

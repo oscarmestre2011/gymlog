@@ -6,7 +6,7 @@ import {
   listTrainedExercises,
 } from '../db/repository'
 import { useQuery } from '../hooks'
-import { formatNumber, prettyDate, startOfWeekISO, todayISO } from '../lib/format'
+import { formatKilograms, formatNumber, prettyDate, startOfWeekISO, todayISO } from '../lib/format'
 import { summarizeSets } from '../components/ExercisePicker'
 
 /**
@@ -139,7 +139,7 @@ export function ProgressScreen() {
                         {formatNumber(item.topWeight)} kg
                         {trend > 0 ? ' ↑' : trend < 0 ? ' ↓' : ''}
                       </td>
-                      <td className="num">{formatNumber(Math.round(item.volume))}</td>
+                      <td className="num">{formatKilograms(item.volume)}</td>
                     </tr>
                   )
                 })}
@@ -164,7 +164,7 @@ export function ProgressScreen() {
                     {week.weekStart === startOfWeekISO(todayISO()) ? ' (actual)' : ''}
                   </span>
                   <span className="v">
-                    {formatNumber(Math.round(week.volume))} kg · {week.sets} series
+                    {formatKilograms(week.volume)} · {week.sets} series
                   </span>
                 </div>
               ))}

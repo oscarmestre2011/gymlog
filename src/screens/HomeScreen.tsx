@@ -14,8 +14,9 @@ import { ConfirmDialog } from '../components/Modal'
 import { RoutinePicker } from '../components/RoutinePicker'
 import {
   exerciseSummary,
-  formatNumber,
   formatDuration,
+  formatKilograms,
+  formatKilometers,
   prettyDate,
   todayISO,
   weekdayName,
@@ -121,11 +122,16 @@ export function HomeScreen({
           <div className="label">Sesiones</div>
         </div>
         <div className="stat">
-          <div className="value">{formatNumber(Math.round(stats?.volume ?? 0))} kg</div>
+          <div className="value">{formatKilograms(stats?.volume ?? 0)}</div>
           <div className="label">Volumen total</div>
         </div>
         <div className="stat">
-          <div className="value">{formatNumber(Math.round(stats?.cardioKm ?? 0), 0)} km</div>
+          {/*
+            Se da la distancia EXACTA, con la misma funcion que la hoja de cardio.
+            Antes se redondeaba a kilometros enteros y por eso aqui ponia 5 km mientras
+            en la hoja de cardio ponia 4,5 km: dos sitios del mismo dato en desacuerdo.
+          */}
+          <div className="value">{formatKilometers(stats?.cardioKm ?? 0)}</div>
           <div className="label">Cardio acumulado</div>
         </div>
         <div className="stat">
@@ -193,7 +199,7 @@ export function HomeScreen({
                   </div>
                   <div className="meta">
                     {formatDuration(entry.durationMin * 60)}
-                    {entry.distanceKm ? ` · ${formatNumber(entry.distanceKm)} km` : ''}
+                    {entry.distanceKm ? ` · ${formatKilometers(entry.distanceKm)}` : ''}
                     {entry.elevationM ? ` · +${entry.elevationM} m` : ''}
                   </div>
                 </div>
@@ -263,7 +269,7 @@ function SessionRow({
           {prettyDate(date)}
           {duration ? ` · ${formatDuration(duration)}` : ''}
           {list.length > 0 ? ` · ${list.length} series` : ''}
-          {volume > 0 ? ` · ${formatNumber(volume)} kg` : ''}
+          {volume > 0 ? ` · ${formatKilograms(volume)}` : ''}
         </div>
         {exercises.length > 0 ? (
           <div className="tiny muted" style={{ marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

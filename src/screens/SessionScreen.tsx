@@ -18,6 +18,7 @@ import { ExercisePicker, summarizeSets } from '../components/ExercisePicker'
 import { NumberInput, targetLabel, targetSummary } from '../components/NumberInput'
 import {
   exerciseSummary,
+  formatKilograms,
   formatNumber,
   groupByExercise,
   suggestNextWeight,
@@ -286,7 +287,7 @@ export function SessionScreen({
         <div className="row between" style={{ marginBottom: 10 }}>
           <span className="badge">⏱ {formatDuration(elapsed)}</span>
           <span className="small muted">
-            {workingSets} {workingSets === 1 ? 'serie' : 'series'} · {formatNumber(sessionVolume)} kg de volumen
+            {workingSets} {workingSets === 1 ? 'serie' : 'series'} · {formatKilograms(sessionVolume)} de volumen
           </span>
         </div>
         <div className="row wrap" style={{ gap: 8 }}>
@@ -416,7 +417,7 @@ export function SessionScreen({
       {confirmFinish ? (
         <ConfirmDialog
           title="Terminar sesión"
-          message={`Se guardarán ${workingSets} series con ${formatNumber(sessionVolume)} kg de volumen. Después podrás consultarla en Progreso.`}
+          message={`Se guardarán ${workingSets} series con ${formatKilograms(sessionVolume)} de volumen. Después podrás consultarla en Progreso.`}
           confirmLabel="Terminar"
           onConfirm={() => void handleFinish()}
           onCancel={() => setConfirmFinish(false)}

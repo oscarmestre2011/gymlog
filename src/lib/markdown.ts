@@ -1,5 +1,5 @@
 import type { CardioEntry, ExerciseSet, Session } from '../types'
-import { formatDuration, formatNumber, weekdayName } from './format'
+import { formatDuration, formatKilograms, formatNumber, weekdayName } from './format'
 
 /**
  * Exportacion a Markdown con el mismo formato que el usuario ya usa en su vault
@@ -132,7 +132,7 @@ export function progressionToMarkdown(
     lines.push('|---|---|---|---|')
     for (const entry of row.entries.slice().reverse()) {
       lines.push(
-        `| ${entry.date} | ${entry.summary} | ${formatNumber(entry.topWeight)} kg | ${formatNumber(Math.round(entry.volume))} kg |`,
+        `| ${entry.date} | ${entry.summary} | ${formatNumber(entry.topWeight)} kg | ${formatKilograms(entry.volume)} |`,
       )
     }
     lines.push('')

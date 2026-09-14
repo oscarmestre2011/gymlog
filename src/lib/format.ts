@@ -141,11 +141,32 @@ export function parseDecimalInput(raw: string): number | null {
   return n
 }
 
-/** Numero -> texto con coma decimal, sin ceros sobrantes: 52.5 -> "52,5"; 60 -> "60". */
+/**
+ * Numero -> texto en formato español: coma decimal, punto de millares y sin ceros
+ * sobrantes. 52.5 -> "52,5"; 60 -> "60"; 1234.56 -> "1.234,56"; 1240 -> "1.240".
+ *
+ * El separador de millares faltaba: los volumenes acumulados se veian como "1234 kg"
+ * en lugar de "1.234 kg", que es como se escribe en castellano.
+ */
 export function formatNumber(n: number, decimals = 2): string {
   if (!Number.isFinite(n)) return '0'
-  const rounded = Number(n.toFixed(decimals))
-  return String(rounded).replace('.', ',')
+  const redondeado = Number(n.toFixed(decimals))
+  const [entero, decimales] = String(Math.abs(redondeado)).split('.')
+  const conMillares = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  const signo = redondeado < 0 ? '-' : ''
+  return decimales ? `${signo}${conMillares},${decimales}` : `${signo}${conMillares}`
+}
+
+/**
+ * Peso o volumen en kg para los TOTALES: 1240 -> "1.240 kg", 1234.56 -> "1.234,56 kg".
+ *
+ * Para los totales no se redondea a kilos enteros por lo mismo que en las distancias:
+ * sumando muchas series, el redondeo descuadra el total. Se dan dos decimales como
+ * maximo y se quitan los ceros sobrantes.
+ */
+export function formatKilograms(totalKg: number): string {
+  const kg = Math.max(0, totalKg)
+  return `${formatNumber(Math.round(kg * 100) / 100, 2)} kg`
 }
 
 /**

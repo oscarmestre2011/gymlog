@@ -32,10 +32,20 @@ function check(name, condition, detail = '') {
  */
 const VOLUMEN_TOTAL = 50 * 10 + 52.5 * 8 + 52.5 * 8
 
-/** Acepta "1340" y "1.340" (el formato español lleva punto de millares). */
-const VOLUMEN_ESPERADO = new RegExp(
-  `(${VOLUMEN_TOTAL}|${VOLUMEN_TOTAL.toLocaleString('es-ES')}) kg`,
-)
+/**
+ * Formato espanol de un numero: punto de millares y coma decimal.
+ * Se construye a mano porque toLocaleString('es-ES') en Node no pone el separador de
+ * millares, y la app SI lo pone: 1340 se muestra como "1.340".
+ */
+function formatoEspanol(n, decimales = 2) {
+  const redondeado = Number(n.toFixed(decimales))
+  const [entero, dec] = String(Math.abs(redondeado)).split('.')
+  return entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (dec ? `,${dec}` : '')
+}
+
+/** El volumen tal y como lo muestra la app. */
+const VOLUMEN_TEXTO = `${formatoEspanol(VOLUMEN_TOTAL)} kg`
+const VOLUMEN_ESPERADO = new RegExp(`(${VOLUMEN_TOTAL}|${formatoEspanol(VOLUMEN_TOTAL)}) kg`)
 
 const browser = await chromium.launch()
 const context = await browser.newContext({
@@ -312,6 +322,37 @@ try {
   void minPeriodo
   await shot('07b-totales-cardio')
 
+  /*
+   * Regresion de un fallo reportado: la pantalla de inicio mostraba 5 km de cardio
+   * acumulado mientras la hoja de cardio mostraba 4,5 km. El mismo dato con dos valores
+   * distintos, porque en la pantalla de inicio se redondeaba a kilometros enteros.
+   * Aqui se comprueba que las dos pantallas dicen LO MISMO.
+   */
+  await page.getByRole('button', { name: /Inicio/ }).click()
+  await page.waitForTimeout(1200)
+  const inicio = await page.locator('body').innerText()
+
+  const kmTotalTexto = kmPeriodo([0, 1, 2]) // "121,87 km"
+  check(
+    'La pantalla de inicio da la distancia exacta, igual que la hoja de cardio',
+    inicio.includes(kmTotalTexto),
+    `esperado ${kmTotalTexto} -> ${inicio.match(/[\d.,]+ km/g)?.slice(0, 3).join(' / ') ?? '?'}`,
+  )
+  check(
+    'La pantalla de inicio NO redondea a kilómetros enteros',
+    !inicio.includes('122 km'),
+    inicio.match(/\b12\d km\b/)?.[0] ?? 'no aparece ningún 12X km',
+  )
+  check(
+    'El volumen total lleva separador de millares',
+    /1\.\d{3} kg|1\.\d{3},\d+ kg/.test(inicio),
+    inicio.match(/[\d.,]+ kg/g)?.slice(0, 3).join(' / ') ?? '?',
+  )
+
+  // Y se vuelve a la hoja de cardio para dejar la prueba donde estaba.
+  await page.getByRole('button', { name: /Cardio/ }).click()
+  await page.waitForTimeout(800)
+
   /* ------------------------------ 8. ajustes ----------------------------- */
   await page.getByRole('button', { name: /Ajustes/ }).click()
   await page.waitForTimeout(400)
@@ -341,7 +382,7 @@ try {
 
   const homeText = await page.locator('body').innerText()
   check('La sesión guardada aparece en el historial', homeText.includes('Fuerza A') && homeText.includes('3 series'))
-  check('El volumen se refleja en las estadísticas', VOLUMEN_ESPERADO.test(homeText), homeText.match(/[\d.,]+ kg/g)?.slice(0, 4).join(' / ') ?? '')
+  check('El volumen se refleja en las estadísticas', homeText.includes(VOLUMEN_TEXTO), `esperado ${VOLUMEN_TEXTO} -> ${homeText.match(/[\d.,]+ kg/g)?.slice(0, 4).join(' / ') ?? ''}`)
   await shot('10-inicio-con-historial')
 
   check('No ha habido errores de JavaScript en todo el recorrido', errors.length === 0, errors.join(' | '))
