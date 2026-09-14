@@ -15,6 +15,8 @@
     "test:smoke": "node scripts/smoke.mjs",
     "test:pwa": "node scripts/pwa.mjs",
     "test:pages": "node scripts/verify-pages.mjs",
+    "test:live": "node scripts/verify-live.mjs",
+    "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
     "verify": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
