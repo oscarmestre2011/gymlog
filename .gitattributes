@@ -1,0 +1,12 @@
+# Normalizacion de saltos de linea entre Windows y Linux.
+# El vault se sincroniza con Syncthing entre un PC Linux y este portatil,
+# asi que los ficheros deben guardarse siempre con LF en el repositorio.
+* text=auto eol=lf
+
+# Binarios: no tocar
+*.png binary
+*.jpg binary
+*.ico binary
+
+# Ficheros generados: no aparecen en los diffs
+package-lock.json -diff linguist-generated

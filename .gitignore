@@ -1,0 +1,13 @@
+# Dependencias
+node_modules/
+
+# Compilacion
+dist/
+*.local
+
+# Capturas de la prueba de humo (se regeneran)
+capturas/
+
+# Sistema
+.DS_Store
+Thumbs.db
