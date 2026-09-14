@@ -14,6 +14,7 @@
     "test:watch": "vitest",
     "test:smoke": "node scripts/smoke.mjs",
     "test:pwa": "node scripts/pwa.mjs",
+    "test:pages": "node scripts/verify-pages.mjs",
     "verify": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {

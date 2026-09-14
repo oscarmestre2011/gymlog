@@ -1,0 +1,67 @@
+# Publica la app en GitHub Pages cada vez que se sube un cambio a main.
+#
+# Resultado: una direccion HTTPS fija (https://oscarmestre2011.github.io/gymlog/)
+# que se actualiza sola. Esa direccion es la que se instala en el movil, y al
+# actualizarse se queda el mismo icono y los mismos datos.
+name: Publicar en GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  construir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Comprobar tipos
+        run: npm run typecheck
+
+      - name: Ejecutar las pruebas
+        run: npm test
+
+      - name: Compilar
+        # GYMLOG_BASE deja las rutas de la app preparadas para vivir en /gymlog/,
+        # que es la subcarpeta que usa GitHub Pages en un repositorio de proyecto.
+        run: npm run build
+        env:
+          GYMLOG_BASE: /gymlog/
+
+      - name: Preparar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir la carpeta compilada
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  publicar:
+    needs: construir
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,11 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Configuracion pensada para movil:
-// - base relativa para poder servirla desde cualquier ruta (localhost, LAN o estatica)
-// - dev:lan expone el servidor en la red local para probar desde el telefono
+/**
+ * Configuracion pensada para movil:
+ * - `base` relativa por defecto, para poder servir la app desde cualquier ruta
+ *   (localhost, red local o una carpeta cualquiera de un hosting estatico).
+ * - En GitHub Pages la app vive en una subcarpeta (/gymlog/), asi que el flujo de
+ *   publicacion pasa GYMLOG_BASE=/gymlog/ y las rutas se construyen con esa base.
+ *   Sin esto la pagina se sirve pero se queda en blanco, porque no encuentra sus ficheros.
+ * - `dev:lan` expone el servidor en la red local para probar desde el telefono.
+ */
+const base = process.env.GYMLOG_BASE ?? './'
+
 export default defineConfig({
-  base: './',
+  base,
   plugins: [react()],
   server: {
     port: 5273,
