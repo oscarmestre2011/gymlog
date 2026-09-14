@@ -18,7 +18,7 @@
  * Al cambiar este archivo, sube VERSION.
  */
 
-const VERSION = 'v2'
+const VERSION = 'v3'
 const CACHE = `gymlog-${VERSION}`
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png']
 
@@ -104,6 +104,30 @@ self.addEventListener('fetch', (event) => {
           // Se guarda tambien bajo la ruta pedida (por ejemplo "/" o "/index.html").
           if (response.ok) await store(request, response.clone())
           return response
+        }),
+    )
+    return
+  }
+
+  // El manifiesto (nombre e iconos) va a RED PRIMERO, con la copia como respaldo.
+  //
+  // Motivo: al renombrar la app (GymLog -> Kairós) el service worker seguia sirviendo
+  // el manifiesto precargado, asi que la app ya se llamaba Kairós en pantalla pero el
+  // nombre del icono instalado seguia siendo el antiguo. El manifiesto pesa menos de
+  // 1 KB: pedirlo a la red no cuesta nada y evita esa incoherencia. Sin conexion se
+  // usa la copia guardada, asi que la instalacion sigue funcionando offline.
+  if (url.pathname.endsWith('.webmanifest')) {
+    event.respondWith(
+      fetch(request)
+        .then(async (response) => {
+          if (response && response.ok && response.type !== 'opaque') {
+            await store(request, response.clone())
+          }
+          return response
+        })
+        .catch(async () => {
+          const cached = await caches.match(request)
+          return cached ?? caches.match('./manifest.webmanifest')
         }),
     )
     return

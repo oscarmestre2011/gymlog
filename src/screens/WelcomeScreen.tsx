@@ -1,4 +1,5 @@
 import { saveSettings } from '../db/repository'
+import { KairosMark } from '../components/KairosMark'
 
 /**
  * Pantalla de bienvenida: se ve UNA vez, la primera vez que se abre la app.
@@ -29,10 +30,10 @@ export function WelcomeScreen({
   return (
     <div className="screen welcome">
       <div className="welcome-hero">
-        <span className="welcome-icon" aria-hidden>
-          🏋️
-        </span>
-        <h2>Bienvenido a GymLog</h2>
+        <div className="welcome-logo">
+          <KairosMark size={84} titulo="Kairós" />
+        </div>
+        <h2>Bienvenido a Kairós</h2>
         <p className="muted">
           Para apuntar tus entrenamientos de gimnasio desde el móvil: series, pesos, rutinas,
           progresión y cardio. <b>Funciona sin conexión</b>, así que da igual que en el gimnasio no
@@ -105,7 +106,7 @@ export function WelcomeScreen({
       </button>
 
       <p className="tiny muted center" style={{ marginTop: 4 }}>
-        GymLog · tus entrenamientos, en tu bolsillo
+        Kairós · El momento de entrenar
       </p>
     </div>
   )

@@ -11,13 +11,23 @@
 const ESPERA_ARRANQUE_MS = 2500
 
 /**
+ * Texto que identifica la bienvenida.
+ *
+ * A proposito NO incluye el nombre de la app: cuando la app paso de llamarse
+ * "GymLog" a "Kairós", buscar el nombre viejo dejo a media docena de pruebas
+ * atascadas esperando una pantalla que ya decia otra cosa. Se busca la parte fija
+ * del titulo ("Bienvenido a") para que renombrar la app no vuelva a romperlas.
+ */
+const TEXTO_BIENVENIDA = 'text=Bienvenido a'
+
+/**
  * Deja la app lista para usar: si sale la bienvenida, la cierra.
  * Devuelve true si habia bienvenida (util para comprobarlo en las pruebas).
  */
 export async function pasarBienvenida(page, { capturar } = {}) {
   await page.waitForTimeout(ESPERA_ARRANQUE_MS)
 
-  const hayBienvenida = (await page.locator('text=Bienvenido a GymLog').count()) > 0
+  const hayBienvenida = (await page.locator(TEXTO_BIENVENIDA).count()) > 0
   if (!hayBienvenida) return false
 
   if (capturar) await capturar()

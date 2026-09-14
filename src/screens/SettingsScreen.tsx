@@ -12,6 +12,7 @@ import {
 import { db } from '../db'
 import { seedIfEmpty } from '../db/seed'
 import { ConfirmDialog } from '../components/Modal'
+import { KairosMark } from '../components/KairosMark'
 import { exerciseSummary } from '../lib/format'
 import { progressionToMarkdown, sessionsToMarkdown } from '../lib/markdown'
 
@@ -257,9 +258,22 @@ export function SettingsScreen({
       {/* -------------------------------- acerca ------------------------------- */}
       <div className="card">
         <h2 className="card-title">Acerca de</h2>
+
+        <div className="about-head">
+          <KairosMark size={54} titulo="Kairós" />
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '1.02rem' }}>Kairós</div>
+            <div className="tiny muted">El momento de entrenar</div>
+          </div>
+        </div>
+
+        <div className="kv">
+          <span className="k">Creada por</span>
+          <span className="v">Óscar</span>
+        </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.0.6</span>
+          <span className="v">1.0.7</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>
@@ -269,10 +283,15 @@ export function SettingsScreen({
           <span className="k">Servidor / cuentas</span>
           <span className="v">Ninguno</span>
         </div>
-        <p className="tiny muted" style={{ marginTop: 10, marginBottom: 0 }}>
-          GymLog guarda todo en el almacenamiento local del navegador (IndexedDB). No envía nada a
-          ningún sitio. Para instalarla en el móvil, ábrela en el navegador y usa «Añadir a pantalla de
-          inicio».
+
+        <p className="tiny muted" style={{ marginTop: 10, marginBottom: 8 }}>
+          Nace del podcast <b>Kairós</b>, sobre entrenar a partir de los 50 años. Kairós guarda todo en
+          el almacenamiento local del navegador (IndexedDB): no envía nada a ningún sitio y nadie más
+          puede ver tus entrenamientos.
+        </p>
+        <p className="tiny muted" style={{ marginBottom: 0 }}>
+          Para instalarla: en Android, menú ⋮ → «Instalar aplicación»; en iPhone, Safari → Compartir →
+          «Añadir a pantalla de inicio».
         </p>
       </div>
 

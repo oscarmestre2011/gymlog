@@ -25,6 +25,7 @@ import { RestBar } from './components/RestBar'
 import { RoutinePicker } from './components/RoutinePicker'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { StartupError } from './components/StartupError'
+import { KairosMark } from './components/KairosMark'
 import { todayISO, weekdayName } from './lib/format'
 
 export type Tab = 'inicio' | 'rutinas' | 'progreso' | 'cardio' | 'ajustes'
@@ -260,7 +261,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   }
 
   const titles: Record<Tab, string> = {
-    inicio: 'GymLog',
+    inicio: 'Kairós',
     rutinas: 'Mis rutinas',
     progreso: 'Progresión',
     cardio: 'Cardio',
@@ -273,6 +274,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   return (
     <div className={`app${updateReady ? ' has-update' : ''}`}>
       <header className="topbar">
+        {!showingSession && tab === 'inicio' ? <KairosMark size={26} titulo="Kairós" /> : null}
         <div className="grow">
           <h1>{title}</h1>
           <div className="sub">

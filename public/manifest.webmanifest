@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "GymLog — Registro de entrenamiento",
-  "short_name": "GymLog",
+  "name": "Kairós — Entrenamiento",
+  "short_name": "Kairós",
   "description": "Anota series, rutinas, progresión y cardio. Funciona sin conexión y guarda todo en tu móvil.",
   "start_url": "./",
   "scope": "./",

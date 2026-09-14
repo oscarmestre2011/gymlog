@@ -28,7 +28,7 @@ function check(name, condition, detail = '') {
 /** Cierra la pantalla de bienvenida si aparece (sale la primera vez que se abre). */
 async function pasarBienvenida(page) {
   await page.waitForTimeout(2000)
-  if ((await page.locator('text=Bienvenido a GymLog').count()) > 0) {
+  if ((await page.locator('text=Bienvenido a').count()) > 0) {
     await page.getByText('Ya lo veré luego').click()
     await page.waitForTimeout(900)
   }

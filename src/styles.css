@@ -863,6 +863,15 @@ tr.down td.num {
   text-align: right;
 }
 
+.about-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
 /* ------------------------------ bienvenida ------------------------------- */
 
 .welcome {
@@ -872,6 +881,12 @@ tr.down td.num {
 .welcome-hero {
   text-align: center;
   padding: 6px 4px 10px;
+}
+
+.welcome-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
 }
 
 .welcome-icon {

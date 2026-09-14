@@ -61,7 +61,7 @@ async function shot(name) {
  * de lo que ve alguien que instala la app.
  */
 async function pasarBienvenida() {
-  const hayBienvenida = (await page.locator('text=Bienvenido a GymLog').count()) > 0
+  const hayBienvenida = (await page.locator('text=Bienvenido a').count()) > 0
   check('La primera vez aparece la bienvenida', hayBienvenida)
   if (hayBienvenida) {
     await shot('00-bienvenida')

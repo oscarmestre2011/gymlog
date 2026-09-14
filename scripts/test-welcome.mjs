@@ -35,7 +35,7 @@ try {
   await page.waitForTimeout(2000)
 
   const bienvenida = await page.locator('body').innerText()
-  check('La bienvenida aparece la primera vez', /Bienvenido a GymLog/i.test(bienvenida))
+  check('La bienvenida aparece la primera vez', /Bienvenido a Kairós/i.test(bienvenida))
   check('Explica que es y que funciona sin conexión', /sin conexión/i.test(bienvenida))
   check('Dice donde van los datos (su móvil, sin servidor)', /Se guardan solo en tu móvil/i.test(bienvenida) && /No hay servidor/i.test(bienvenida))
   check('Avisa de hacer copia de seguridad', /copia/i.test(bienvenida))
@@ -102,7 +102,7 @@ try {
   await esperarApp(page, 20000)
   await page.waitForTimeout(1200)
   const segundaVisita = await page.locator('body').innerText()
-  check('La bienvenida NO vuelve a aparecer', !/Bienvenido a GymLog/i.test(segundaVisita))
+  check('La bienvenida NO vuelve a aparecer', !/Bienvenido a Kairós/i.test(segundaVisita))
   check('Se entra directamente a la app', segundaVisita.includes('Empezar entrenamiento'))
   check('Los datos guardados siguen ahí', /Back squat|Fuerza A/.test(segundaVisita))
 
@@ -139,7 +139,7 @@ try {
   const conSesion = await page2.locator('body').innerText()
   check(
     'Con una sesión a medias NO interrumpe con la bienvenida',
-    !/Bienvenido a GymLog/i.test(conSesion) && /Terminar y guardar/.test(conSesion),
+    !/Bienvenido a Kairós/i.test(conSesion) && /Terminar y guardar/.test(conSesion),
     conSesion.slice(0, 90).replace(/\n/g, ' '),
   )
   await context2.close()
