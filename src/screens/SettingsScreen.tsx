@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react'
 import type { BackupFile, Settings } from '../types'
 import {
-  exportBackup,
   getExerciseHistory,
   importBackup,
   listCardio,
@@ -12,6 +11,7 @@ import {
 import { db } from '../db'
 import { seedIfEmpty } from '../db/seed'
 import { ConfirmDialog } from '../components/Modal'
+import { descargarArchivo, descargarCopiaDeSeguridad } from '../lib/descargar'
 import { KairosMark } from '../components/KairosMark'
 import { exerciseSummary } from '../lib/format'
 import { progressionToMarkdown, sessionsToMarkdown } from '../lib/markdown'
@@ -31,25 +31,14 @@ export function SettingsScreen({
   const [confirmReseed, setConfirmReseed] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const download = (contents: string, filename: string, type = 'text/plain') => {
-    const blob = new Blob([contents], { type })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    window.setTimeout(() => URL.revokeObjectURL(url), 4000)
-  }
+  /** Se usa el ayudante compartido: la misma descarga que el aviso de la portada. */
+  const download = (contents: string, filename: string, type = 'text/plain') =>
+    descargarArchivo(contents, filename, type)
 
   const handleExportJSON = async () => {
     setBusy(true)
     try {
-      const backup = await exportBackup()
-      const stamp = new Date().toISOString().slice(0, 10)
-      download(JSON.stringify(backup, null, 2), `gymlog-copia-${stamp}.json`, 'application/json')
-      await onSave({ lastBackupAt: Date.now() })
+      await descargarCopiaDeSeguridad()
       notify('Copia descargada')
     } finally {
       setBusy(false)
@@ -205,6 +194,32 @@ export function SettingsScreen({
             e.target.value = ''
           }}
         />
+
+        {/* Cada cuanto recordar que toca copia. 0 = no recordar. */}
+        <div className="field" style={{ marginTop: 14 }}>
+          <label>Recordarme que haga copia</label>
+          <div className="row wrap" style={{ gap: 6 }}>
+            {[
+              { dias: 7, texto: 'Cada semana' },
+              { dias: 14, texto: 'Cada 14 días' },
+              { dias: 30, texto: 'Cada mes' },
+              { dias: 0, texto: 'No recordar' },
+            ].map((opcion) => (
+              <button
+                key={opcion.dias}
+                className={`chip${(settings.backupReminderDays ?? 7) === opcion.dias ? ' active' : ''}`}
+                onClick={() => void onSave({ backupReminderDays: opcion.dias })}
+              >
+                {opcion.texto}
+              </button>
+            ))}
+          </div>
+          <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+            {(settings.backupReminderDays ?? 7) === 0
+              ? 'Sin recordatorio. Acuérdate de hacer copia por tu cuenta.'
+              : 'Aparecerá un aviso en la pantalla de inicio cuando toque. Se puede descartar.'}
+          </p>
+        </div>
       </div>
 
       {/* ------------------------------ exportar ------------------------------- */}
@@ -273,7 +288,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.0.11</span>
+          <span className="v">1.0.12</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

@@ -872,6 +872,12 @@ tr.down td.num {
   border-bottom: 1px solid var(--border);
 }
 
+/* Aviso de copia de seguridad: destaca sin gritar, y explica por que importa. */
+.reminder {
+  border-color: rgba(251, 191, 36, 0.45);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.1) 0%, var(--bg-elev) 100%);
+}
+
 /* ------------------------------ bienvenida ------------------------------- */
 
 .welcome {

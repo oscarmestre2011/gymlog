@@ -10,6 +10,9 @@ import {
   listSets,
 } from '../db/repository'
 import { useQuery } from '../hooks'
+import { useSettings } from '../hooks'
+import { descargarCopiaDeSeguridad } from '../lib/descargar'
+import { BackupReminder } from '../components/BackupReminder'
 import { ConfirmDialog } from '../components/Modal'
 import { RoutinePicker } from '../components/RoutinePicker'
 import {
@@ -37,6 +40,7 @@ export function HomeScreen({
   onGoTo: (tab: Tab) => void
   notify: (message: string) => void
 }) {
+  const [settings] = useSettings()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
@@ -67,6 +71,20 @@ export function HomeScreen({
 
   return (
     <div className="screen">
+      {/*
+        Aviso de copia de seguridad, arriba del todo. Los datos viven solo en este movil:
+        si se borran los datos del navegador no hay forma de recuperarlos sin una copia.
+      */}
+      <BackupReminder
+        settings={settings}
+        hayDatos={(stats?.sessions ?? 0) > 0 || (stats?.sets ?? 0) > 0 || (stats?.cardioKm ?? 0) > 0}
+        onDescargar={async () => {
+          await descargarCopiaDeSeguridad()
+          notify('Copia descargada: guárdala en un sitio seguro')
+          setRefreshKey((k) => k + 1)
+        }}
+      />
+
       {/* ------------------------------ sesion ------------------------------ */}
       {active ? (
         <div className="card" style={{ borderColor: 'var(--accent)' }}>

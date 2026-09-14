@@ -240,7 +240,7 @@ export async function seedIfEmpty(force = false): Promise<{ exercises: number; r
       id: newId('r_'),
       code: seed.code,
       name: seed.name,
-      description: `${seed.description} (${seed.weekday})`,
+      description: seed.description,
       exercises: routineExercises,
       isDefault: seed.isDefault,
       createdAt: now + index,

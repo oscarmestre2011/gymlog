@@ -153,6 +153,11 @@ export interface Settings {
   lastBackupAt?: number
   /** Si ya se ha mostrado la pantalla de bienvenida (se muestra una sola vez). */
   hasSeenWelcome?: boolean
+  /**
+   * Cada cuantos dias recordar que toca hacer copia. 0 = no recordar nunca.
+   * Los datos viven solo en el movil, asi que este aviso es la unica proteccion.
+   */
+  backupReminderDays: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -163,6 +168,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoStartRest: true,
   autoBackupWeeks: 0,
   hasSeenWelcome: false,
+  backupReminderDays: 7,
 }
 
 /** Formato de fichero de copia de seguridad. */
