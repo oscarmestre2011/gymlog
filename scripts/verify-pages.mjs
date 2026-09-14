@@ -6,20 +6,35 @@
  * ambito del service worker, start_url del manifiesto y navegacion directa a
  * rutas inexistentes.
  *
+ * IMPORTANTE: compila en una carpeta aparte (.tmp-dist-pages) a proposito, para
+ * NO pisar dist/. Si esta prueba sobreescribiera dist/, despues el smoke test y
+ * la prueba de PWA fallarian al servir desde la raiz, y el fallo pareceria de la
+ * app cuando solo seria del orden de las pruebas.
+ *
  * Uso:  node scripts/verify-pages.mjs
- * Requiere haber compilado antes con la base correspondiente:
- *   $env:GYMLOG_BASE='/gymlog/'; npm run build
  */
 import { chromium, devices } from 'playwright'
 import { createServer } from 'node:http'
-import { readFile, stat } from 'node:fs/promises'
+import { readFile, stat, rm } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, extname, join, normalize } from 'node:path'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 
+const run = promisify(execFile)
 const here = dirname(fileURLToPath(import.meta.url))
-const distDir = join(here, '..', 'dist')
+const projectDir = join(here, '..')
+const distDir = join(projectDir, '.tmp-dist-pages')
 const SUBPATH = '/gymlog/'
 const PORT = 5395
+
+console.log('Compilando para subcarpeta en .tmp-dist-pages (sin tocar dist/)...')
+await run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['vite', 'build', '--outDir', '.tmp-dist-pages', '--emptyOutDir'], {
+  cwd: projectDir,
+  env: { ...process.env, GYMLOG_BASE: SUBPATH },
+  shell: process.platform === 'win32',
+})
+console.log('compilado\n')
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -176,6 +191,8 @@ try {
 } finally {
   await browser.close()
   server.close()
+  // Se limpia la carpeta temporal de la prueba.
+  await rm(distDir, { recursive: true, force: true }).catch(() => {})
 }
 
 const failed = results.filter((r) => !r.ok)

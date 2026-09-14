@@ -3,6 +3,10 @@ node_modules/
 
 # Compilacion
 dist/
+
+# Compilacion temporal de las pruebas (subcarpeta de GitHub Pages)
+.tmp-dist-pages/
+.tmp-dist-antiguo/
 *.local
 
 # Capturas de la prueba de humo (se regeneran)

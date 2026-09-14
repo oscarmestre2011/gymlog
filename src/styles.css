@@ -830,6 +830,30 @@ tr.down td.num {
   text-align: right;
 }
 
+/* Aviso de version nueva: arriba, discreto y sin tapar la barra de navegacion. */
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(var(--safe-t) + 10px) 14px 10px;
+  background: var(--bg-elev-2);
+  border-bottom: 1px solid var(--accent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  font-size: 0.86rem;
+}
+
+/* Mientras se ve el aviso, se aparta el contenido para que no quede debajo. */
+.app.has-update {
+  padding-top: 62px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

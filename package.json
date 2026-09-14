@@ -16,8 +16,10 @@
     "test:pwa": "node scripts/pwa.mjs",
     "test:pages": "node scripts/verify-pages.mjs",
     "test:live": "node scripts/verify-live.mjs",
+    "test:update": "node scripts/update-banner.mjs",
     "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
-    "verify": "npm run typecheck && npm run test && npm run build"
+    "verify": "npm run typecheck && npm run test && npm run build",
+    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update"
   },
   "dependencies": {
     "dexie": "^4.0.10",

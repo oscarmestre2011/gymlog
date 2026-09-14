@@ -29,7 +29,7 @@ export type Tab = 'inicio' | 'rutinas' | 'progreso' | 'cardio' | 'ajustes'
 /** Datos de una serie nueva, tal y como los acepta el almacen. */
 export type NewSetInput = Parameters<typeof addSet>[0]
 
-export function App() {
+export function App({ updateEvent = 'gymlog:update-ready' }: { updateEvent?: string } = {}) {
   const [ready, setReady] = useState(false)
   const [tab, setTab] = useState<Tab>('inicio')
   const [session, setSession] = useState<Session | null>(null)
@@ -46,8 +46,23 @@ export function App() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
   const [toast, setToast] = useState<string | null>(null)
+  const [updateReady, setUpdateReady] = useState(false)
 
   const rest = useRestTimer(settings.soundOn, settings.vibrateOn)
+
+  /* --------------------------- version nueva ---------------------------- */
+  // El service worker avisa cuando hay una version nueva descargada. Se ofrece
+  // recargar, pero no se obliga: el usuario puede estar en mitad de una serie.
+  useEffect(() => {
+    const onUpdate = () => setUpdateReady(true)
+    window.addEventListener(updateEvent, onUpdate)
+    return () => window.removeEventListener(updateEvent, onUpdate)
+  }, [updateEvent])
+
+  const applyUpdate = useCallback(() => {
+    setUpdateReady(false)
+    window.location.reload()
+  }, [])
 
   /* ------------------------------ arranque ------------------------------ */
   useEffect(() => {
@@ -163,7 +178,7 @@ export function App() {
   const title = showingSession && session ? session.routineName : titles[tab]
 
   return (
-    <div className="app">
+    <div className={`app${updateReady ? ' has-update' : ''}`}>
       <header className="topbar">
         <div className="grow">
           <h1>{title}</h1>
@@ -261,6 +276,25 @@ export function App() {
           onPick={(routine) => void handleStart(routine, todayISO())}
           onClose={() => setPickerOpen(false)}
         />
+      ) : null}
+
+      {updateReady ? (
+        <div className="update-banner" role="status">
+          <span className="grow">
+            <b>Hay una versión nueva.</b> Tus datos no se tocan.
+          </span>
+          <button className="btn sm primary" onClick={applyUpdate}>
+            Actualizar
+          </button>
+          <button
+            className="icon-btn"
+            onClick={() => setUpdateReady(false)}
+            aria-label="Ahora no"
+            title="Ahora no"
+          >
+            ✕
+          </button>
+        </div>
       ) : null}
 
       {toast ? (
