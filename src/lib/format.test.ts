@@ -5,6 +5,8 @@ import {
   exerciseSummary,
   formatClock,
   formatDuration,
+  formatHoursMinutes,
+  formatKilometers,
   formatNumber,
   groupByExercise,
   paceMinPerKm,
@@ -14,6 +16,8 @@ import {
   roundToIncrement,
   setVolume,
   speedKmh,
+  startOfMonthISO,
+  startOfWeekISO,
   suggestNextWeight,
   todayISO,
   totalVolume,
@@ -34,6 +38,20 @@ describe('fechas', () => {
     expect(addDaysISO('2026-06-30', 1)).toBe('2026-07-01')
     expect(addDaysISO('2026-12-31', 1)).toBe('2027-01-01')
     expect(addDaysISO('2026-03-01', -1)).toBe('2026-02-28')
+  })
+
+  it('calcula el lunes de la semana', () => {
+    // 23 de junio de 2026 es martes: su semana empieza el lunes 22.
+    expect(startOfWeekISO('2026-06-23')).toBe('2026-06-22')
+    // Un lunes se queda en si mismo.
+    expect(startOfWeekISO('2026-06-22')).toBe('2026-06-22')
+    // Un domingo pertenece a la semana que empezo el lunes anterior.
+    expect(startOfWeekISO('2026-06-28')).toBe('2026-06-22')
+  })
+
+  it('calcula el primer dia del mes', () => {
+    expect(startOfMonthISO('2026-06-23')).toBe('2026-06-01')
+    expect(startOfMonthISO('2026-01-05')).toBe('2026-01-01')
   })
 })
 
@@ -78,8 +96,39 @@ describe('numeros con coma decimal', () => {
   })
 })
 
-describe('ritmo y velocidad', () => {
-  it('calcula el ritmo en min/km', () => {
+describe('totales de cardio', () => {
+  it('da la distancia total exacta, sin redondear a kilometros', () => {
+    // El caso que reporto el usuario: sumar salidas largas en bici.
+    expect(formatKilometers(42.27)).toBe('42,27 km')
+    expect(formatKilometers(30.5)).toBe('30,5 km')
+    expect(formatKilometers(12)).toBe('12 km')
+    expect(formatKilometers(0)).toBe('0 km')
+  })
+
+  it('suma varios recorridos sin perder metros', () => {
+    const total = 42.27 + 49.1 + 65.33
+    expect(formatKilometers(total)).toBe('156,7 km')
+  })
+
+  it('da el tiempo exacto en horas y minutos', () => {
+    expect(formatHoursMinutes(110)).toBe('1 h 50 min')
+    expect(formatHoursMinutes(120)).toBe('2 h')
+    expect(formatHoursMinutes(45)).toBe('45 min')
+    expect(formatHoursMinutes(0)).toBe('0 min')
+    // 20 h 19 min: el caso de un historico de bici.
+    expect(formatHoursMinutes(1219)).toBe('20 h 19 min')
+  })
+
+  it('redondea los segundos sobrantes al minuto, para que el total cuadre', () => {
+    // 1h 23m 32s -> 83,53 min -> 84 min
+    expect(formatHoursMinutes(83.53)).toBe('1 h 24 min')
+    // 59,6 min no debe quedarse en "0 h 60 min"
+    expect(formatHoursMinutes(59.6)).toBe('1 h')
+    expect(formatHoursMinutes(119.7)).toBe('2 h')
+  })
+})
+
+describe('ritmo y velocidad', () => {  it('calcula el ritmo en min/km', () => {
     // 8,02 km en 1h23m32s -> ~10:25 min/km (dato real del diario)
     expect(paceMinPerKm(8.02, 5012)).toBe('10:25 min/km')
     expect(paceMinPerKm(10, 3000)).toBe('5:00 min/km')

@@ -207,6 +207,111 @@ try {
   const cardioText = await page.locator('body').innerText()
   check('El registro de cardio se guarda', cardioText.includes('Bici') && cardioText.includes('42,27 km'))
 
+  /* ------------- 7b. totales de cardio: exactos y por periodos -------------- */
+  // Se piden los totales con la distancia EXACTA (con metros) y el tiempo EXACTO, mas
+  // el total de la semana. Antes se redondeaba a kilometros y horas enteras, asi que
+  // sumando salidas largas en bici se perdian cientos de metros y decenas de minutos.
+  //
+  // Para que la comprobacion sea fiable se parten de cero: se borran las entradas de
+  // cardio y se dejan tres con valores conocidos, dos de esta semana y una de hace mas
+  // de un mes (que no debe contar ni en la semana ni en el mes).
+  const hoy = new Date()
+  const iso = (diasAtras) => {
+    const fecha = new Date(hoy)
+    fecha.setDate(fecha.getDate() - diasAtras)
+    return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
+  }
+  const salidas = [
+    { id: 'prueba_1', fecha: iso(0), km: 42.27, minutos: 110 }, // hoy
+    { id: 'prueba_2', fecha: iso(1), km: 49.1, minutos: 125 }, // ayer
+    { id: 'prueba_3', fecha: iso(40), km: 30.5, minutos: 90 }, // fuera de mes y semana
+  ]
+  await page.evaluate(async (entradas) => {
+    const peticion = indexedDB.open('gymlog')
+    const db = await new Promise((resolve) => {
+      peticion.onsuccess = () => resolve(peticion.result)
+    })
+    const almacen = db.transaction('cardio', 'readwrite').objectStore('cardio')
+    almacen.clear()
+    for (const [indice, entrada] of entradas.entries()) {
+      almacen.put({
+        id: entrada.id,
+        activity: 'Bici',
+        date: entrada.fecha,
+        durationMin: entrada.minutos,
+        distanceKm: entrada.km,
+        createdAt: Date.now() + indice,
+      })
+    }
+    await new Promise((resolve) => {
+      almacen.transaction.oncomplete = resolve
+    })
+  }, salidas)
+
+  await page.reload({ waitUntil: 'networkidle' })
+  await esperarApp(page)
+  await page.getByRole('button', { name: /Cardio/ }).click()
+  await page.waitForTimeout(1300)
+  const totales = await page.locator('body').innerText()
+
+  // 42,27 + 49,1 + 30,5 = 121,87 km   y   110 + 125 + 90 = 325 min = 5 h 25 min
+  const kmPeriodo = (indices) =>
+    `${Math.round(indices.reduce((a, i) => a + salidas[i].km, 0) * 100) / 100}`.replace('.', ',') + ' km'
+  const minPeriodo = (indices) => indices.reduce((a, i) => a + salidas[i].minutos, 0)
+
+  const filas = await page.evaluate(() =>
+    [...document.querySelectorAll('table.data tbody tr')].map((f) => f.innerText.replace(/\s+/g, ' ').trim()),
+  )
+  const filaSemana = filas.find((f) => /Esta semana/i.test(f)) ?? ''
+  const filaMes = filas.find((f) => /Este mes/i.test(f)) ?? ''
+  const filaTotal = filas.find((f) => /\bTotal\b/i.test(f)) ?? ''
+
+  console.log(`   semana: ${filaSemana}`)
+  console.log(`   mes:    ${filaMes}`)
+  console.log(`   total:  ${filaTotal}`)
+
+  check(
+    'El total de distancia es exacto, con metros (no redondeado a km)',
+    filaTotal.includes('121,87 km'),
+    filaTotal,
+  )
+  check(
+    'El total de tiempo es exacto, en horas y minutos',
+    filaTotal.includes('5 h 25 min'),
+    filaTotal,
+  )
+  check('Hay total de esta semana', /Esta semana/i.test(totales))
+  check('Hay total de este mes', /Este mes/i.test(totales))
+  /*
+   * OJO con la semana: "ayer" solo esta en la misma semana si hoy no es lunes. Se
+   * calcula que salidas caen en la semana actual en lugar de darlo por supuesto; si no,
+   * la prueba falla los lunes (que es justo lo que paso la primera vez).
+   */
+  const lunesDeEstaSemana = (() => {
+    const fecha = new Date(hoy)
+    fecha.setDate(fecha.getDate() - ((fecha.getDay() + 6) % 7))
+    return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`
+  })()
+  const enEstaSemana = salidas.map((s) => s.fecha >= lunesDeEstaSemana)
+  const enEsteMes = salidas.map((s) => s.fecha.slice(0, 7) === salidas[0].fecha.slice(0, 7))
+
+  const indicesDe = (mascara) => mascara.map((dentro, i) => (dentro ? i : -1)).filter((i) => i >= 0)
+
+  check(
+    'La semana suma solo las salidas de esta semana',
+    filaSemana.includes(kmPeriodo(indicesDe(enEstaSemana))),
+    `esperado ${kmPeriodo(indicesDe(enEstaSemana))} (lunes ${lunesDeEstaSemana}) -> ${filaSemana}`,
+  )
+  check(
+    'El mes no incluye la salida de hace 40 días',
+    !filaMes.includes('121,87') && filaMes.includes(kmPeriodo(indicesDe(enEsteMes))),
+    `esperado ${kmPeriodo(indicesDe(enEsteMes))} -> ${filaMes}`,
+  )
+  check('El total sí incluye las tres salidas', filaTotal.includes(kmPeriodo([0, 1, 2])), filaTotal)
+  check('No se redondea a kilómetros enteros', !/\b122 km\b/.test(totales), totales.match(/\b12\d km\b/)?.[0] ?? '')
+  void minPeriodo
+  await shot('07b-totales-cardio')
+
   /* ------------------------------ 8. ajustes ----------------------------- */
   await page.getByRole('button', { name: /Ajustes/ }).click()
   await page.waitForTimeout(400)

@@ -53,6 +53,52 @@ export function formatClock(totalSeconds: number): string {
 }
 
 /**
+ * Minutos -> "18 h 19 min".
+ *
+ * Para los TOTALES, no para una sesion suelta: en los totales solo interesan horas y
+ * minutos, y los segundos sobran. Si sobraran segundos se redondean al minuto, que es
+ * la unica forma de que la suma de varias sesiones no parezca haber perdido tiempo.
+ * Por debajo de una hora devuelve solo los minutos ("45 min").
+ */
+export function formatHoursMinutes(totalMinutes: number): string {
+  const minutos = Math.max(0, Math.round(totalMinutes))
+  const horas = Math.floor(minutos / 60)
+  const resto = minutos % 60
+  if (horas === 0) return `${resto} min`
+  if (resto === 0) return `${horas} h`
+  return `${horas} h ${resto} min`
+}
+
+/**
+ * Distancia total en km, con los metros exactos.
+ *
+ * Nada de redondear a kilometros enteros: sumando salidas largas en bici, el redondeo
+ * escondia cientos de metros (42,27 km se mostraba como "42 km"). Se dan dos decimales
+ * (precision de 10 m) y sin ceros sobrantes: 42,27 km, 30,5 km, 12 km.
+ */
+export function formatKilometers(totalKm: number): string {
+  const km = Math.max(0, totalKm)
+  // Se redondea a 10 metros: mas precision que esa no aporta nada.
+  const redondeado = Math.round(km * 100) / 100
+  return `${formatNumber(redondeado, 2)} km`
+}
+
+/** Lunes de la semana a la que pertenece una fecha ISO (semana que empieza en lunes). */
+export function startOfWeekISO(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const day = (date.getDay() + 6) % 7 // lunes = 0
+  date.setDate(date.getDate() - day)
+  return todayISO(date)
+}
+
+/** Primer dia del mes al que pertenece una fecha ISO. */
+export function startOfMonthISO(iso: string): string {
+  const [y, m] = iso.split('-').map(Number)
+  return `${y}-${pad(m)}-01`
+}
+
+/**
  * Acepta lo que uno escribe de verdad: "45", "1:23:32", "1h23m", "23m32s", "83:32".
  * Devuelve segundos, o null si no se entiende.
  */
@@ -135,15 +181,6 @@ export function estimated1RM(weight: number, reps: number): number {
 /** Volumen de una serie: peso x repeticiones. */
 export function setVolume(weight: number, reps: number): number {
   return Math.max(0, weight) * Math.max(0, reps)
-}
-
-/** Lunes de la semana a la que pertenece una fecha ISO. */
-export function startOfWeekISO(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const date = new Date(y, m - 1, d)
-  const day = (date.getDay() + 6) % 7 // lunes = 0
-  date.setDate(date.getDate() - day)
-  return todayISO(date)
 }
 
 /** Suma de volumen de una lista de series (ignora aproximacion si se pide). */

@@ -7,11 +7,15 @@ import { ConfirmDialog, Modal } from '../components/Modal'
 import { NumberInput } from '../components/NumberInput'
 import {
   formatDuration,
+  formatHoursMinutes,
+  formatKilometers,
   formatNumber,
   paceMinPerKm,
   parseDurationInput,
   prettyDate,
   speedKmh,
+  startOfMonthISO,
+  startOfWeekISO,
   todayISO,
 } from '../lib/format'
 
@@ -33,8 +37,26 @@ export function CardioScreen({ notify }: { notify: (message: string) => void }) 
     })
   }
 
-  const totalKm = (entries ?? []).reduce((acc, e) => acc + (e.distanceKm ?? 0), 0)
-  const totalMin = (entries ?? []).reduce((acc, e) => acc + e.durationMin, 0)
+  /**
+   * Totales de cardio: de siempre, de este mes y de esta semana.
+   *
+   * Se dan con la distancia EXACTA (con metros) y el tiempo EXACTO (horas y minutos):
+   * antes se redondeaba a kilometros enteros y a horas enteras, asi que sumando salidas
+   * largas en bici se perdian cientos de metros y decenas de minutos.
+   */
+  const sumar = (lista: CardioEntry[]) => ({
+    km: lista.reduce((acc, e) => acc + (e.distanceKm ?? 0), 0),
+    minutos: lista.reduce((acc, e) => acc + e.durationMin, 0),
+    sesiones: lista.length,
+  })
+
+  const hoy = todayISO()
+  const todas = entries ?? []
+  const totales = {
+    todo: sumar(todas),
+    mes: sumar(todas.filter((e) => e.date >= startOfMonthISO(hoy))),
+    semana: sumar(todas.filter((e) => e.date >= startOfWeekISO(hoy))),
+  }
 
   return (
     <div className="screen">
@@ -42,15 +64,47 @@ export function CardioScreen({ notify }: { notify: (message: string) => void }) 
         ＋ Añadir sesión de cardio
       </button>
 
-      {(entries?.length ?? 0) > 0 ? (
-        <div className="stats">
-          <div className="stat">
-            <div className="value">{formatNumber(Math.round(totalKm), 0)} km</div>
-            <div className="label">Distancia total</div>
-          </div>
-          <div className="stat">
-            <div className="value">{Math.round(totalMin / 60)} h</div>
-            <div className="label">Tiempo total</div>
+      {todas.length > 0 ? (
+        <div className="card">
+          <h2 className="card-title">Totales</h2>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>Periodo</th>
+                  <th className="num">Distancia</th>
+                  <th className="num">Tiempo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <b>Esta semana</b>
+                    <div className="tiny muted">desde el lunes {prettyDate(startOfWeekISO(hoy))}</div>
+                  </td>
+                  <td className="num">{formatKilometers(totales.semana.km)}</td>
+                  <td className="num">{formatHoursMinutes(totales.semana.minutos)}</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>Este mes</b>
+                    <div className="tiny muted">desde el {prettyDate(startOfMonthISO(hoy))}</div>
+                  </td>
+                  <td className="num">{formatKilometers(totales.mes.km)}</td>
+                  <td className="num">{formatHoursMinutes(totales.mes.minutos)}</td>
+                </tr>
+                <tr>
+                  <td>
+                    <b>Total</b>
+                    <div className="tiny muted">
+                      {todas.length} {todas.length === 1 ? 'sesión' : 'sesiones'}
+                    </div>
+                  </td>
+                  <td className="num">{formatKilometers(totales.todo.km)}</td>
+                  <td className="num">{formatHoursMinutes(totales.todo.minutos)}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       ) : null}
