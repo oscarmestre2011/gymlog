@@ -442,8 +442,41 @@ select.input {
   letter-spacing: -0.02em;
 }
 
+.rest-bar.done {
+  border-top-color: var(--accent);
+  background: rgba(74, 222, 128, 0.14);
+  animation: rest-flash 1s ease-in-out 3;
+}
+
 .rest-bar.done .clock {
   color: var(--accent);
+}
+
+.rest-bar .rest-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Aviso visible al terminar: en iPhone no hay sonido ni vibracion, asi que
+   tiene que verse claramente en pantalla. */
+.rest-done-text {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+@keyframes rest-flash {
+  0%,
+  100% {
+    background: rgba(74, 222, 128, 0.14);
+  }
+  50% {
+    background: rgba(74, 222, 128, 0.34);
+  }
 }
 
 .rest-progress {

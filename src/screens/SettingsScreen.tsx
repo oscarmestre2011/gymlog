@@ -160,12 +160,13 @@ export function SettingsScreen({
         />
         <Toggle
           label="Aviso sonoro al terminar el descanso"
+          hint="En iPhone Safari no permite sonidos: allí el aviso es visual (la barra se pone verde y escribe «¡Descanso terminado!»)."
           checked={settings.soundOn}
           onChange={(v) => void onSave({ soundOn: v })}
         />
         <Toggle
           label="Vibración al terminar el descanso"
-          hint="Depende del navegador del móvil; en iPhone no está disponible."
+          hint="Solo en Android. En iPhone no existe: al terminar el descanso verás el aviso en pantalla, en verde."
           checked={settings.vibrateOn}
           onChange={(v) => void onSave({ vibrateOn: v })}
         />
@@ -258,7 +259,7 @@ export function SettingsScreen({
         <h2 className="card-title">Acerca de</h2>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.0.4</span>
+          <span className="v">1.0.5</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

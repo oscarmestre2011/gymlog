@@ -20,9 +20,10 @@
     "test:black-screen": "node scripts/test-no-black-screen.mjs",
     "test:install": "node scripts/installability.mjs",
     "test:keep-data": "node scripts/test-update-keeps-data.mjs",
+    "test:safari": "node scripts/verify-safari.mjs",
     "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
     "verify": "npm run typecheck && npm run test && npm run build",
-    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data"
+    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari"
   },
   "dependencies": {
     "dexie": "^4.0.10",
