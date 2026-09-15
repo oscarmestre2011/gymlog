@@ -3,6 +3,13 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.3.1 — Las copias de seguridad, en un solo apartado
+
+_2026-09-16_
+
+- **Mejorado:** Las copias estaban repartidas en dos apartados («Copia de seguridad» y «Carpeta de copias») que hacían lo mismo con nombres distintos. Ahora es uno solo, ordenado: primero cuándo fue la última copia, luego las dos formas de copiar (el archivo a mano y la carpeta automática) y al final el recordatorio.
+- **Mejorado:** Al guardar en la carpeta, «última copia» se actualiza al momento.
+
 ## 1.3.0 — Perfil del deportista y arreglo de la carpeta de copias
 
 _2026-09-16_

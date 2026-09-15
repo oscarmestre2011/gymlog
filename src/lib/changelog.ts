@@ -37,6 +37,15 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.3.1',
+    fecha: '2026-09-16',
+    titulo: 'Las copias de seguridad, en un solo apartado',
+    cambios: [
+      { tipo: 'mejora', texto: 'Las copias estaban repartidas en dos apartados («Copia de seguridad» y «Carpeta de copias») que hacían lo mismo con nombres distintos. Ahora es uno solo, ordenado: primero cuándo fue la última copia, luego las dos formas de copiar (el archivo a mano y la carpeta automática) y al final el recordatorio.' },
+      { tipo: 'mejora', texto: 'Al guardar en la carpeta, «última copia» se actualiza al momento.' },
+    ],
+  },
+  {
     version: '1.3.0',
     fecha: '2026-09-16',
     titulo: 'Perfil del deportista y arreglo de la carpeta de copias',

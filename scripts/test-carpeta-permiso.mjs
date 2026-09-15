@@ -141,7 +141,7 @@ try {
     window.__pedidosDePermiso = 0
     window.__escritos = []
   })
-  await page.getByRole('button', { name: /Comprobar y guardar ahora/i }).click()
+  await page.getByRole('button', { name: /Guardar ahora/i }).click()
   await page.waitForTimeout(2500)
 
   const trasGuardar = await page.evaluate(() => ({

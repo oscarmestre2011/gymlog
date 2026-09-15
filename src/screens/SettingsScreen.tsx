@@ -235,157 +235,6 @@ export function SettingsScreen({
         </div>
       </div>
 
-      {/* --------------------- carpeta para las copias ---------------------- */}
-      <div className="card">
-        <h2 className="card-title">Carpeta de copias</h2>
-
-        {!hayCarpetas ? (
-          <p className="small muted" style={{ margin: 0 }}>
-            Este navegador no permite guardar en una carpeta del móvil (en iPhone no existe esa
-            opción: es una limitación de Safari, no de la app). Usa <b>Descargar copia</b> y guarda
-            el archivo donde quieras.
-          </p>
-        ) : (
-          <>
-            <p className="small muted" style={{ marginTop: 0 }}>
-              Elige una carpeta y la app guardará ahí una copia sola, sin que tengas que hacer nada.
-              Es más cómodo que descargar el archivo a mano.
-            </p>
-
-            <div className="kv">
-              <span className="k">Carpeta</span>
-              <span className="v">
-                {carpeta ? `📁 ${carpeta.name}` : 'sin elegir'}
-                {carpeta && estadoCarpeta === 'sin-permiso' ? ' · permiso caducado' : ''}
-              </span>
-            </div>
-
-            {carpeta && estadoCarpeta === 'sin-permiso' ? (
-              <p className="small warn" style={{ marginTop: 8 }}>
-                El navegador ha retirado el permiso para escribir en esa carpeta (pasa al cerrarlo
-                del todo). Pulsa «Comprobar y guardar ahora» para volver a darlo.
-              </p>
-            ) : null}
-
-            <div className="row wrap" style={{ gap: 8, marginTop: 10 }}>
-              <button
-                className="btn"
-                disabled={busy}
-                onClick={async () => {
-                  const resultado = await elegirCarpeta()
-                  if (resultado.estado === 'cancelada') return
-                  if (resultado.estado === 'no-guardada' || !resultado.carpeta) {
-                    // Con el motivo a la vista: sin él no hay forma de saber qué arreglar.
-                    notify(
-                      `No se ha podido recordar la carpeta (${resultado.detalle ?? 'motivo desconocido'})`,
-                    )
-                    return
-                  }
-                  setCarpeta(resultado.carpeta)
-                  /*
-                   * Se comprueba el permiso AL ELEGIR, no solo al guardar. Asi el usuario se
-                   * entera aqui (que es cuando esta delante del dialogo) y no mas tarde, cuando
-                   * le diga que no puede escribir y ya no sepa por que.
-                   */
-                  const puede = await permisoParaEscribir(resultado.carpeta, true)
-                  setEstadoCarpeta(puede ? 'lista' : 'sin-permiso')
-                  notify(
-                    puede
-                      ? `Carpeta elegida: ${resultado.carpeta.name}`
-                      : 'Carpeta elegida, pero el navegador no deja escribir en ella',
-                  )
-                }}
-              >
-                {carpeta ? 'Cambiar de carpeta' : '📁 Elegir carpeta'}
-              </button>
-              <button
-                className="btn primary"
-                disabled={busy}
-                onClick={async () => {
-                  if (!carpeta) {
-                    // Sin carpeta no hay donde copiar: se dice, en lugar de dejar el boton muerto.
-                    notify('Elige primero una carpeta')
-                    return
-                  }
-                  setBusy(true)
-                  try {
-                    const resultado = await copiarACarpeta({ pedirPermiso: true })
-                    if (resultado.estado === 'guardada') {
-                      setEstadoCarpeta('lista')
-                      notify(`Copia guardada en ${resultado.carpeta}`)
-                    } else if (resultado.estado === 'sin-permiso') {
-                      setEstadoCarpeta('sin-permiso')
-                      notify('El navegador no ha dado permiso para escribir')
-                    } else if (resultado.estado === 'carpeta-perdida') {
-                      await guardarCarpeta(null)
-                      setCarpeta(null)
-                      setEstadoCarpeta('lista')
-                      notify('Esa carpeta ya no existe: elige otra')
-                    } else if (resultado.estado === 'error') {
-                      // Se dice QUE ha fallado, no solo que ha fallado.
-                      notify(`No se pudo guardar: ${resultado.detalle}`)
-                    }
-                  } finally {
-                    setBusy(false)
-                  }
-                }}
-              >
-                Comprobar y guardar ahora
-              </button>
-              {carpeta ? (
-                <button
-                  className="btn ghost"
-                  disabled={busy}
-                  onClick={async () => {
-                    await guardarCarpeta(null)
-                    setCarpeta(null)
-                    notify('Carpeta olvidada')
-                  }}
-                >
-                  Olvidar carpeta
-                </button>
-              ) : null}
-            </div>
-
-            <div className="field" style={{ marginTop: 12 }}>
-              <label>Copia automática</label>
-              <div className="row wrap" style={{ gap: 6 }}>
-                {[
-                  { semanas: 0, texto: 'Desactivada' },
-                  { semanas: 1, texto: 'Semanal' },
-                  { semanas: 2, texto: 'Quincenal' },
-                  { semanas: 4, texto: 'Mensual' },
-                ].map((opcion) => (
-                  <button
-                    key={opcion.semanas}
-                    className={`chip${settings.autoBackupWeeks === opcion.semanas ? ' active' : ''}`}
-                    onClick={() => void onSave({ autoBackupWeeks: opcion.semanas })}
-                  >
-                    {opcion.texto}
-                  </button>
-                ))}
-              </div>
-              <p className="tiny muted" style={{ margin: '6px 0 0' }}>
-                La copia se hace al abrir la app cuando toca, sin preguntar nada. Guarda un archivo
-                por día, con la fecha en el nombre (<code>{nombreDeCopia()}</code>).
-              </p>
-            </div>
-
-            <p className="tiny muted" style={{ marginTop: 10, marginBottom: 0 }}>
-              Una carpeta del propio móvil te protege de borrar los datos del navegador o de
-              desinstalar la app, pero <b>no de perder el móvil</b>: para eso, saca el archivo del
-              teléfono de vez en cuando (compártelo o súbelo a la nube).
-            </p>
-
-            <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
-              Si algún día pone <b>«permiso caducado»</b>, es normal: los navegadores de móvil
-              retiran el permiso de escritura al cerrarse del todo, por seguridad. Pulsa
-              «Comprobar y guardar ahora», acepta, y vuelve a funcionar.
-            </p>
-          </>
-        )}
-      </div>
-
       {/* ------------------------------ novedades ------------------------------ */}
       <div className="card">
         <h2 className="card-title">Novedades</h2>
@@ -460,19 +309,39 @@ export function SettingsScreen({
         </p>
       </div>
 
-      {/* -------------------------------- copia -------------------------------- */}
+      {/* ------------------------------ copias --------------------------------- */}
+      {/*
+        UN SOLO apartado de copias. Antes habia dos ("Copia de seguridad" y "Carpeta de copias"),
+        que hacian lo mismo con nombres distintos y obligaban al usuario a entender la diferencia.
+        Ahora: primero el estado, luego las dos formas de copiar (el archivo a mano y la carpeta
+        automatica), el importar, y al final el recordatorio.
+      */}
       <div className="card">
         <h2 className="card-title">Copia de seguridad</h2>
+
         <p className="small muted" style={{ marginTop: 0 }}>
-          Los datos viven solo en este dispositivo. Si borras los datos del navegador, se pierden: haz
-          copia de vez en cuando.
-          {daysSinceBackup !== null
-            ? daysSinceBackup === 0
-              ? ' Última copia: hoy.'
-              : ` Última copia: hace ${daysSinceBackup} ${daysSinceBackup === 1 ? 'día' : 'días'}.`
-            : ' Todavía no has hecho ninguna copia.'}
+          Tus datos viven solo en este dispositivo. Si borras los datos del navegador o desinstalas
+          la app, se pierden. Aquí tienes dos formas de protegerte, y puedes usar las dos.
         </p>
 
+        {/* Estado: lo primero que se quiere saber. */}
+        <div className="kv">
+          <span className="k">Última copia</span>
+          <span className="v">
+            {daysSinceBackup === null
+              ? 'nunca'
+              : daysSinceBackup === 0
+                ? 'hoy'
+                : `hace ${daysSinceBackup} ${daysSinceBackup === 1 ? 'día' : 'días'}`}
+          </span>
+        </div>
+
+        {/* ------------------------- forma 1: el archivo ------------------------ */}
+        <h3 className="sub-title">1 · Descargar el archivo</h3>
+        <p className="tiny muted" style={{ marginTop: 0 }}>
+          Vale en cualquier móvil, también en iPhone. Tú decides dónde guardarlo, y para restaurarlo
+          se importa aquí mismo.
+        </p>
         <div className="row wrap" style={{ gap: 8 }}>
           <button className="btn primary grow" onClick={() => void handleExportJSON()} disabled={busy}>
             ⬇ Descargar copia (.json)
@@ -493,31 +362,172 @@ export function SettingsScreen({
           }}
         />
 
-        {/* Cada cuanto recordar que toca copia. 0 = no recordar. */}
-        <div className="field" style={{ marginTop: 14 }}>
-          <label>Recordarme que haga copia</label>
-          <div className="row wrap" style={{ gap: 6 }}>
-            {[
-              { dias: 7, texto: 'Cada semana' },
-              { dias: 14, texto: 'Cada 14 días' },
-              { dias: 30, texto: 'Cada mes' },
-              { dias: 0, texto: 'No recordar' },
-            ].map((opcion) => (
-              <button
-                key={opcion.dias}
-                className={`chip${(settings.backupReminderDays ?? 7) === opcion.dias ? ' active' : ''}`}
-                onClick={() => void onSave({ backupReminderDays: opcion.dias })}
-              >
-                {opcion.texto}
-              </button>
-            ))}
-          </div>
-          <p className="tiny muted" style={{ margin: '6px 0 0' }}>
-            {(settings.backupReminderDays ?? 7) === 0
-              ? 'Sin recordatorio. Acuérdate de hacer copia por tu cuenta.'
-              : 'Aparecerá un aviso en la pantalla de inicio cuando toque. Se puede descartar.'}
+        {/* ----------------------- forma 2: la carpeta -------------------------- */}
+        <h3 className="sub-title">2 · Copia automática en una carpeta</h3>
+        {!hayCarpetas ? (
+          <p className="tiny muted" style={{ marginTop: 0 }}>
+            Este navegador no permite guardar en una carpeta del móvil. En iPhone esa opción no
+            existe: es una limitación de Safari, no de la app. Con <b>Descargar copia</b> estás
+            cubierto igual.
           </p>
+        ) : (
+          <>
+            <p className="tiny muted" style={{ marginTop: 0 }}>
+              Elige una carpeta del móvil y la app guardará ahí una copia sola, sin que hagas nada.
+              Es la opción cómoda: se olvida uno de descargar el archivo.
+            </p>
+
+            <div className="kv">
+              <span className="k">Carpeta</span>
+              <span className="v">
+                {carpeta ? `📁 ${carpeta.name}` : 'sin elegir'}
+                {carpeta && estadoCarpeta === 'sin-permiso' ? ' · permiso caducado' : ''}
+              </span>
+            </div>
+
+            {carpeta && estadoCarpeta === 'sin-permiso' ? (
+              <p className="small warn" style={{ marginTop: 8 }}>
+                El navegador ha retirado el permiso para escribir en esa carpeta (pasa al cerrarlo
+                del todo). Pulsa «Comprobar y guardar ahora» para volver a darlo.
+              </p>
+            ) : null}
+
+            <div className="row wrap" style={{ gap: 8, marginTop: 10 }}>
+              <button
+                className="btn"
+                disabled={busy}
+                onClick={async () => {
+                  const resultado = await elegirCarpeta()
+                  if (resultado.estado === 'cancelada') return
+                  if (resultado.estado === 'no-guardada' || !resultado.carpeta) {
+                    // Con el motivo a la vista: sin él no hay forma de saber qué arreglar.
+                    notify(
+                      `No se ha podido recordar la carpeta (${resultado.detalle ?? 'motivo desconocido'})`,
+                    )
+                    return
+                  }
+                  setCarpeta(resultado.carpeta)
+                  /*
+                   * Se comprueba el permiso AL ELEGIR, no solo al guardar. Asi el usuario se
+                   * entera aqui (que es cuando esta delante del dialogo) y no mas tarde.
+                   */
+                  const puede = await permisoParaEscribir(resultado.carpeta, true)
+                  setEstadoCarpeta(puede ? 'lista' : 'sin-permiso')
+                  notify(
+                    puede
+                      ? `Carpeta elegida: ${resultado.carpeta.name}`
+                      : 'Carpeta elegida, pero el navegador no deja escribir en ella',
+                  )
+                }}
+              >
+                {carpeta ? 'Cambiar de carpeta' : '📁 Elegir carpeta'}
+              </button>
+              <button
+                className="btn primary"
+                disabled={busy}
+                onClick={async () => {
+                  if (!carpeta) {
+                    // Sin carpeta no hay donde copiar: se dice, en lugar de dejar el boton muerto.
+                    notify('Elige primero una carpeta')
+                    return
+                  }
+                  setBusy(true)
+                  try {
+                    const resultado = await copiarACarpeta({ pedirPermiso: true })
+                    if (resultado.estado === 'guardada') {
+                      setEstadoCarpeta('lista')
+                      // Se anota por el camino de siempre, para que "Última copia" se actualice ya.
+                      await onSave({ lastBackupAt: resultado.cuando })
+                      notify(`Copia guardada en ${resultado.carpeta}`)
+                    } else if (resultado.estado === 'sin-permiso') {
+                      setEstadoCarpeta('sin-permiso')
+                      notify('El navegador no ha dado permiso para escribir')
+                    } else if (resultado.estado === 'carpeta-perdida') {
+                      await guardarCarpeta(null)
+                      setCarpeta(null)
+                      setEstadoCarpeta('lista')
+                      notify('Esa carpeta ya no existe: elige otra')
+                    } else if (resultado.estado === 'error') {
+                      // Se dice QUE ha fallado, no solo que ha fallado.
+                      notify(`No se pudo guardar: ${resultado.detalle}`)
+                    }
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+              >
+                Guardar ahora
+              </button>
+              {carpeta ? (
+                <button
+                  className="btn ghost"
+                  disabled={busy}
+                  onClick={async () => {
+                    await guardarCarpeta(null)
+                    setCarpeta(null)
+                    notify('Carpeta olvidada')
+                  }}
+                >
+                  Olvidar carpeta
+                </button>
+              ) : null}
+            </div>
+
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>Cada cuánto copiar sola</label>
+              <div className="row wrap" style={{ gap: 6 }}>
+                {[
+                  { semanas: 0, texto: 'Desactivada' },
+                  { semanas: 1, texto: 'Semanal' },
+                  { semanas: 2, texto: 'Quincenal' },
+                  { semanas: 4, texto: 'Mensual' },
+                ].map((opcion) => (
+                  <button
+                    key={opcion.semanas}
+                    className={`chip${settings.autoBackupWeeks === opcion.semanas ? ' active' : ''}`}
+                    onClick={() => void onSave({ autoBackupWeeks: opcion.semanas })}
+                  >
+                    {opcion.texto}
+                  </button>
+                ))}
+              </div>
+              <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+                Se hace al abrir la app cuando toca, sin preguntar. Un archivo por día, con la fecha
+                en el nombre (<code>{nombreDeCopia()}</code>).
+              </p>
+            </div>
+
+            <p className="tiny muted" style={{ margin: '10px 0 0' }}>
+              Una carpeta del propio móvil te protege de borrar los datos del navegador o de
+              desinstalar la app, pero <b>no de perder el móvil</b>. Para eso, descarga el archivo de
+              vez en cuando y guárdalo fuera (mándatelo por correo o súbelo a la nube).
+            </p>
+          </>
+        )}
+
+        {/* -------------------------- el recordatorio --------------------------- */}
+        <h3 className="sub-title">3 · Recordatorio</h3>
+        <div className="row wrap" style={{ gap: 6 }}>
+          {[
+            { dias: 7, texto: 'Cada semana' },
+            { dias: 14, texto: 'Cada 14 días' },
+            { dias: 30, texto: 'Cada mes' },
+            { dias: 0, texto: 'No recordar' },
+          ].map((opcion) => (
+            <button
+              key={opcion.dias}
+              className={`chip${(settings.backupReminderDays ?? 7) === opcion.dias ? ' active' : ''}`}
+              onClick={() => void onSave({ backupReminderDays: opcion.dias })}
+            >
+              {opcion.texto}
+            </button>
+          ))}
         </div>
+        <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+          {(settings.backupReminderDays ?? 7) === 0
+            ? 'Sin recordatorio. Acuérdate de hacer copia por tu cuenta.'
+            : 'Aviso en la pantalla de inicio cuando toque. Se puede descartar.'}
+        </p>
       </div>
 
       {/* ------------------------------ exportar ------------------------------- */}
@@ -586,7 +596,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.3.0</span>
+          <span className="v">1.3.1</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

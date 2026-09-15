@@ -79,9 +79,9 @@ try {
   await page.waitForTimeout(800)
 
   const seccionCarpeta = await page.locator('body').innerText()
-  check('Ajustes tiene la sección de carpeta', /Carpeta de copias/i.test(seccionCarpeta))
+  check('Ajustes tiene la sección de copias unificada', /Copia de seguridad/i.test(seccionCarpeta))
   check('Ofrece elegir una carpeta', /Elegir carpeta/i.test(seccionCarpeta))
-  check('Explica que la copia se hace sola', /guardará ahí una copia sola/i.test(seccionCarpeta))
+  check('Explica que la copia se hace sola', /guardar[aá] ahí una copia sola/i.test(seccionCarpeta))
   check('Avisa de que no protege contra perder el móvil', /no de perder el móvil/i.test(seccionCarpeta))
   check('Se puede elegir cada cuánto', /Quincenal/i.test(seccionCarpeta) && /Mensual/i.test(seccionCarpeta))
   check('Muestra el nombre que tendrá el archivo', /kairos-copia-\d{4}-\d{2}-\d{2}\.json/.test(seccionCarpeta))
@@ -128,7 +128,7 @@ try {
   )
 
   // Sin carpeta, pulsar guardar tampoco puede quedarse callado.
-  await page.getByRole('button', { name: /Comprobar y guardar ahora/i }).click()
+  await page.getByRole('button', { name: /Guardar ahora/i }).click()
   await page.waitForTimeout(1200)
   const sinCarpeta = await page.locator('body').innerText()
   check('Sin carpeta, avisa de que hay que elegirla', /Elige primero una carpeta/i.test(sinCarpeta), sinCarpeta.match(/Elige primero[^\n]*/)?.[0] ?? 'no avisa')

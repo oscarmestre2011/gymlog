@@ -1,4 +1,4 @@
-import { exportBackup, getSettings, saveSettings } from '../db/repository'
+import { exportBackup, getSettings } from '../db/repository'
 
 /**
  * Copia de seguridad automatica en una carpeta del movil.
@@ -50,7 +50,7 @@ export function soportado(): boolean {
 
 /** Resultado de intentar una copia automatica. */
 export type ResultadoCopia =
-  | { estado: 'guardada'; archivo: string; carpeta: string }
+  | { estado: 'guardada'; archivo: string; carpeta: string; /** Cuando se hizo, para anotarlo. */ cuando: number }
   | { estado: 'sin-carpeta' }
   | { estado: 'sin-permiso' }
   | { estado: 'carpeta-perdida' }
@@ -280,8 +280,7 @@ export async function copiarACarpeta(opciones: { pedirPermiso?: boolean } = {}):
       if (await permisoParaEscribir(carpeta, true)) {
         try {
           await escribir()
-          await saveSettings({ lastBackupAt: Date.now() })
-          return { estado: 'guardada', archivo, carpeta: carpeta.name }
+          return { estado: 'guardada', archivo, carpeta: carpeta.name, cuando: Date.now() }
         } catch (segundo) {
           return { estado: 'error', detalle: nombreDeError(segundo) }
         }
@@ -296,8 +295,7 @@ export async function copiarACarpeta(opciones: { pedirPermiso?: boolean } = {}):
     return { estado: 'error', detalle: tipo }
   }
 
-  await saveSettings({ lastBackupAt: Date.now() })
-  return { estado: 'guardada', archivo, carpeta: carpeta.name }
+  return { estado: 'guardada', archivo, carpeta: carpeta.name, cuando: Date.now() }
 }
 
 /**
