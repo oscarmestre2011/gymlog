@@ -40,14 +40,15 @@ const CAMPOS: { campo: CampoMedida; titulo: string; unidad: string; ayuda?: stri
  * de ahi que vayan aparte de las sesiones.
  */
 export function MeasurementsScreen({ notify }: { notify: (message: string) => void }) {
-  const [settings] = useSettings()
+  const [settings, guardarAjustes] = useSettings()
   const [editando, setEditando] = useState<BodyMeasurement | 'nueva' | null>(null)
   const [porBorrar, setPorBorrar] = useState<BodyMeasurement | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   const { data: mediciones } = useQuery(() => listMeasurements(), [refreshKey], [])
   const lista = mediciones ?? []
-  const altura = settings.heightCm || undefined
+  // Sin altura no se calcula NADA: es mejor no mostrar un indicador que mostrarlo mal.
+  const altura = settings.heightCm && settings.heightCm > 0 ? settings.heightCm : undefined
 
   const resumenes = useMemo(
     () => CAMPOS.map((c) => ({ ...c, ...resumenDe(lista, c.campo) })),
@@ -66,6 +67,12 @@ export function MeasurementsScreen({ notify }: { notify: (message: string) => vo
 
   return (
     <div className="screen">
+      {/*
+        Pedir la altura aqui, y no escondida en Ajustes: es imprescindible para el IMC y el
+        indicador cintura/altura, y sin ella no se puede calcular nada. Se pide una sola vez.
+      */}
+      {!altura ? <PedirAltura onGuardar={(cm) => void guardarAjustes({ heightCm: cm })} /> : null}
+
       {/* --------------------------- ultima medicion --------------------------- */}
       {ultima ? (
         <div className="card">
@@ -128,7 +135,7 @@ export function MeasurementsScreen({ notify }: { notify: (message: string) => vo
               ) : null}
               <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
                 El IMC no distingue músculo de grasa: con entrenamiento de fuerza, la cintura y la
-                fuerza son mejores señales. Altura configurada: {altura ?? '—'} cm.
+                fuerza son mejores señales. Calculado con tu altura: {altura} cm.
               </p>
             </div>
           ) : null}
@@ -387,5 +394,49 @@ function FormularioMedida({
         evolución.
       </p>
     </Modal>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Pide la altura la primera vez.
+ *
+ * Se pregunta aqui, en el momento en que hace falta, en lugar de dejarlo escondido en
+ * Ajustes: sin altura no se puede calcular el IMC ni el indicador cintura/altura, y si se
+ * usara una altura ajena los numeros saldrian mal sin avisar.
+ */
+function PedirAltura({ onGuardar }: { onGuardar: (cm: number) => void }) {
+  const [valor, setValor] = useState<number | undefined>(undefined)
+  const valida = typeof valor === 'number' && valor > 100 && valor < 250
+
+  return (
+    <div className="card reminder">
+      <div style={{ fontWeight: 700 }}>📐 Falta tu altura</div>
+      <div className="small muted" style={{ marginTop: 4 }}>
+        Hace falta para calcular el IMC y el indicador cintura/altura. Es un dato tuyo, así que
+        la app no lo supone: sin él, esos indicadores no se muestran.
+      </div>
+      <div className="row" style={{ gap: 8, marginTop: 12, alignItems: 'flex-end' }}>
+        <div className="field grow" style={{ margin: 0 }}>
+          <label htmlFor="altura-cm">Altura (cm)</label>
+          <NumberInput
+            value={valor}
+            onChange={setValor}
+            integer
+            ariaLabel="Altura en centímetros"
+            placeholder="170"
+          />
+        </div>
+        <button className="btn primary" disabled={!valida} onClick={() => valida && onGuardar(valor as number)}>
+          Guardar
+        </button>
+      </div>
+      {valor !== undefined && !valida ? (
+        <p className="tiny warn" style={{ margin: '8px 0 0' }}>
+          Escribe una altura entre 100 y 250 cm.
+        </p>
+      ) : null}
+    </div>
   )
 }

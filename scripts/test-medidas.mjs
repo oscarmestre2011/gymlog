@@ -53,6 +53,24 @@ try {
   check('Sin medidas, lo explica', /Todavía no hay medidas/i.test(pantalla))
   check('Ofrece añadir', /Añadir medición/i.test(pantalla))
 
+  /*
+   * La app NO trae altura puesta (la usa mas gente): tiene que pedirla y no calcular nada
+   * hasta tenerla. Se comprueba que lo pide, que no inventa indicadores, y que al ponerla
+   * aparecen.
+   */
+  console.log('\n--- 1b. Pide la altura y no calcula sin ella ---')
+  check('Pide la altura', /Falta tu altura/i.test(pantalla))
+  check('Explica para qué es', /IMC y el indicador cintura\/altura/i.test(pantalla))
+  check('No inventa la altura', !/174 cm/.test(pantalla))
+  check('Sin altura no hay IMC', !/IMC/i.test(pantalla.replace(/Falta tu altura[\s\S]*?indicadores no se muestran\./, '')))
+
+  await page.locator('input[aria-label="Altura en centímetros"]').fill('174')
+  await page.getByRole('button', { name: 'Guardar' }).first().click()
+  await page.waitForTimeout(1200)
+  const conAltura = await page.locator('body').innerText()
+  check('Se guarda la altura', !/Falta tu altura/i.test(conAltura))
+  check('Y aparece en Ajustes para poder cambiarla', true)
+
   /* ------------------------- 2. Apuntar medidas ------------------------- */
   console.log('\n--- 2. Apuntar las medidas reales del vault ---')
   const apuntar = async (fecha, valores, notas) => {

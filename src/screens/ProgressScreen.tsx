@@ -259,7 +259,9 @@ function ResumenMedidas({ onVer }: { onVer?: () => void }) {
   const peso = resumenDe(lista, 'weightKg')
   const abdomen = resumenDe(lista, 'abdomenCm')
   const ultima = lista[0]
-  const whTr = ultima ? cinturaAltura(ultima, settings?.heightCm || undefined) : null
+  // Sin altura no se muestra el indicador (mejor no mostrarlo que mostrarlo mal).
+  const altura = settings?.heightCm && settings.heightCm > 0 ? settings.heightCm : undefined
+  const whTr = ultima && altura ? cinturaAltura(ultima, altura) : null
   const riesgo = riesgoCinturaAltura(whTr)
 
   return (

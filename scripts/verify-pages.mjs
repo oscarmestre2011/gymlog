@@ -141,18 +141,28 @@ try {
   /* 4. Service worker con el ambito correcto */
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(1500)
+  /*
+   * Se cuentan los recursos de la cache del service worker. La cache es cualquiera que empiece
+   * por "gymlog-" y no un nombre escrito a mano: antes ponia "gymlog-v6" y la prueba fallaba
+   * cada vez que se subia la version de la cache, con un fallo que parecia de la app y no lo era.
+   */
   const sw = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.getRegistration()
     if (!registration) return { ok: false }
     const scope = new URL(registration.scope).pathname
-    const cache = await caches.open('gymlog-v6')
-    const keys = await cache.keys()
+    const nombres = await caches.keys()
+    const propias = nombres.filter((n) => n.startsWith('gymlog-'))
+    let recursos = 0
+    for (const nombre of propias) {
+      const cache = await caches.open(nombre)
+      recursos += (await cache.keys()).length
+    }
     return {
       ok: Boolean(registration.active),
       state: registration.active?.state,
       scope,
-      cached: keys.length,
-      cacheNames: await caches.keys(),
+      cached: recursos,
+      cacheNames: nombres,
     }
   })
   check('El service worker se activa bajo la subcarpeta', sw.ok && sw.state === 'activated', `${sw.state} scope=${sw.scope}`)

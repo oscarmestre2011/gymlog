@@ -19,6 +19,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Esta linea no es decorativa: es la MARCA que dice cual es el archivo de la app en uso.
+      La app la usa para compararlo con el publicado y avisar de que hay version nueva.
+      El `data-app` va en un `link` y no en el `script` porque el compilador elimina los `id` y
+      los `data-` de la etiqueta del script al preparar la version publicada, y en el `link` los
+      conserva. Apunta a un archivo real (public/raiz.txt) para no dejar un error 404.
+    -->
+    <link rel="preload" as="fetch" href="./raiz.txt" data-app="raiz" />
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

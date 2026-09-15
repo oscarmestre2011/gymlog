@@ -30,14 +30,18 @@
     "test:supersets": "node scripts/test-supersets.mjs",
     "test:medidas": "node scripts/test-medidas.mjs",
     "test:pantalla": "node scripts/test-pantalla-aviso.mjs",
+    "test:versiones": "node scripts/test-deteccion-version.mjs",
+    "test:novedades": "node scripts/test-novedades.mjs",
     "verify": "npm run typecheck && npm run test && npm run build",
     "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
-    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari && npm run test:welcome && npm run test:multi-device && npm run test:rename && npm run test:backup",
+    "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari && npm run test:welcome && npm run test:multi-device && npm run test:rename && npm run test:backup && npm run test:library && npm run test:supersets && npm run test:medidas && npm run test:pantalla && npm run test:novedades && npm run test:versiones",
+    "changelog": "node scripts/generar-changelog.mjs",
     "icons": "node scripts/make-icons.mjs",
     "check:mark": "node scripts/check-mark.mjs",
     "check:apis": "node scripts/check-alert-apis.mjs",
     "measure:logo": "node scripts/measure-logo.mjs",
-    "diagnose:update": "node scripts/diagnose-update.mjs"
+    "diagnose:update": "node scripts/diagnose-update.mjs",
+    "diagnose:cache": "node scripts/diagnose-cache.mjs"
   },
   "dependencies": {
     "dexie": "^4.0.10",

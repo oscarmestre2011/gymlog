@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { needsSeed, seedIfEmpty } from './db/seed'
 import {
   addSet,
@@ -22,6 +22,9 @@ import { SessionScreen } from './screens/SessionScreen'
 import { RoutinesScreen } from './screens/RoutinesScreen'
 import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen'
 import { MeasurementsScreen } from './screens/MeasurementsScreen'
+import { Novedades } from './components/Novedades'
+import { copiaAutomaticaSiToca } from './lib/copiaAutomatica'
+import { VERSIONES } from './lib/changelog'
 import { ProgressScreen } from './screens/ProgressScreen'
 import { CardioScreen } from './screens/CardioScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
@@ -85,6 +88,10 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   const [verBienvenida, setVerBienvenida] = useState(false)
   /** Pantalla de medidas corporales: se entra desde Progresion. */
   const [verMedidas, setVerMedidas] = useState(false)
+  /** Pantalla de novedades: se entra desde el aviso de version nueva. */
+  const [verNovedades, setVerNovedades] = useState(false)
+  /** El aviso de version nueva se mide para dejarle hueco y que no tape la cabecera. */
+  const avisoRef = useRef<HTMLDivElement | null>(null)
 
   const rest = useRestTimer(settings.soundOn, settings.vibrateOn, settings.alertLength)
   /**
@@ -177,10 +184,63 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
     }
   }, [startupAttempt])
 
+  /**
+   * Deja hueco para el aviso de version nueva.
+   *
+   * El alto del aviso cambia segun el texto y el ancho de la pantalla (al anadir un boton crecio
+   * y tapaba la cabecera). En lugar de fijar un numero a mano, se mide el aviso de verdad y se
+   * publica en la variable CSS que usa el hueco. Se vuelve a medir si cambia el tamano.
+   */
+  useEffect(() => {
+    const aviso = avisoRef.current
+    if (!updateReady || !aviso) {
+      document.documentElement.style.removeProperty('--alto-aviso')
+      return
+    }
+    const medir = () => {
+      const alto = Math.ceil(aviso.getBoundingClientRect().height)
+      if (alto > 0) document.documentElement.style.setProperty('--alto-aviso', `${alto}px`)
+    }
+    medir()
+    const observador = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(medir) : null
+    observador?.observe(aviso)
+    window.addEventListener('resize', medir)
+    return () => {
+      observador?.disconnect()
+      window.removeEventListener('resize', medir)
+    }
+  }, [updateReady])
+
   const notify = useCallback((message: string) => {
     setToast(message)
     window.setTimeout(() => setToast((current) => (current === message ? null : current)), 2600)
   }, [])
+
+  /* -------------------- copia automatica, si toca ------------------------ */
+  /**
+   * Al abrir, se intenta una copia en la carpeta elegida si ya toca.
+   *
+   * Solo se informa cuando hay algo que decir: copia hecha, o permiso caducado (que el usuario
+   * tiene que resolver). Si no hay carpeta configurada o esta desactivado, no se dice nada: la
+   * app no debe dar la lata con lo que el usuario ya decidio.
+   */
+  useEffect(() => {
+    let vivo = true
+    void copiaAutomaticaSiToca()
+      .then((resultado) => {
+        if (!vivo || !resultado) return
+        if (resultado.estado === 'guardada') {
+          notify(`Copia guardada en ${resultado.carpeta}`)
+        } else if (resultado.estado === 'sin-permiso') {
+          notify('La copia automática necesita permiso: revísalo en Ajustes')
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      vivo = false
+    }
+  }, [notify])
+
 
   const reloadSets = useCallback(async (sessionId: string) => {
     setSets(await listSets(sessionId))
@@ -321,6 +381,24 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   const showingSession = viewingSession && session !== null
   const title = showingSession && session ? session.routineName : titles[tab]
 
+  if (verNovedades) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <button className="icon-btn" onClick={() => setVerNovedades(false)} aria-label="Volver">
+            ←
+          </button>
+          <div className="grow">
+            <h1>Novedades</h1>
+            <div className="sub">Lo último de Kairós</div>
+          </div>
+        </header>
+        {/* Se destacan las ultimas versiones, que es lo que interesa al actualizar. */}
+        <Novedades cuantas={2} destacar={VERSIONES[0]?.version} />
+      </div>
+    )
+  }
+
   if (verMedidas) {
     return (
       <div className="app">
@@ -457,10 +535,13 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
       ) : null}
 
       {updateReady ? (
-        <div className="update-banner" role="status">
+        <div className="update-banner" role="status" ref={avisoRef}>
           <span className="grow">
             <b>Hay una versión nueva.</b> Tus datos no se tocan.
           </span>
+          <button className="btn sm ghost" onClick={() => setVerNovedades(true)}>
+            Ver qué cambia
+          </button>
           <button className="btn sm primary" onClick={applyUpdate}>
             Actualizar
           </button>

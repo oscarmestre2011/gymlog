@@ -15,3 +15,6 @@ capturas/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Compilaciones temporales de las pruebas de actualizacion
+.tmp-versiones/

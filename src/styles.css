@@ -512,6 +512,94 @@ select.input {
   transition: width 0.25s linear;
 }
 
+/* ------------------------- registro de novedades ------------------------- */
+
+.cambios {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cambio {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.cambio .marca {
+  flex: 0 0 18px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.cambio.nuevo .marca {
+  color: var(--accent);
+}
+
+.cambio.mejora .marca {
+  color: var(--warn);
+}
+
+.cambio.arreglo .marca {
+  color: #7cc4ff;
+}
+
+/* Etiqueta de tipo (Nuevo / Mejorado / Arreglado) delante de cada cambio. */
+.etiqueta {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 5px;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+}
+
+.etiqueta.nuevo {
+  background: rgba(74, 222, 128, 0.16);
+  color: var(--accent);
+}
+
+.etiqueta.arreglo {
+  background: rgba(124, 196, 255, 0.16);
+  color: #7cc4ff;
+}
+
+/* Pantalla a pantalla completa que se abre encima (novedades). */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--bg);
+  overflow-y: auto;
+  padding-bottom: calc(var(--safe-b) + 16px);
+}
+
+.overlay-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.overlay-head h1 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
 /* --------------------------- medidas corporales -------------------------- */
 
 /* Punto de color que indica el nivel de riesgo de un indicador. */
@@ -1072,9 +1160,16 @@ tr.down td.num {
   font-size: 0.86rem;
 }
 
-/* Mientras se ve el aviso, se aparta el contenido para que no quede debajo. */
+/*
+ * Mientras se ve el aviso, se aparta el contenido para que no quede debajo.
+ *
+ * El hueco sale de una variable que mide el propio aviso (ver App.tsx), no de un numero fijo.
+ * Antes eran 62px y se descuadro en cuanto el aviso crecio al anadir el boton de "Ver que
+ * cambia": el aviso tapaba la cabecera. Midiendolo, el hueco coincide siempre, con cualquier
+ * texto y en cualquier pantalla. El 62px solo se usa como respaldo mientras no se haya medido.
+ */
 .app.has-update {
-  padding-top: 62px;
+  padding-top: var(--alto-aviso, 62px);
 }
 
 @media (prefers-reduced-motion: reduce) {

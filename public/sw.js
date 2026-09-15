@@ -18,7 +18,7 @@
  * Al cambiar este archivo, sube VERSION.
  */
 
-const VERSION = 'v6'
+const VERSION = 'v8'
 const CACHE = `gymlog-${VERSION}`
 /** Tiempo maximo que se espera a la red al abrir la app, antes de usar la copia. */
 const LIMITE_NAVEGACION_MS = 2500
@@ -70,15 +70,34 @@ self.addEventListener('activate', (event) => {
  * acababa devolviendo una copia vieja: la app servia el HTML anterior aunque el nuevo
  * estuviera ya en la cache (se veian incluso tres entradas "/gymlog/index.html"
  * distintas en la misma cache). Se normalizan a una unica clave por direccion.
+ *
+ * La clave INCLUYE lo que va despues de la interrogacion (`?`). Esto no es un detalle: la
+ * app pide `index.html?comprobacion=123` para saber si hay una version nueva, y si aqui se
+ * borrara el parametro esa peticion acabaria devolviendo la copia guardada en lugar de ir al
+ * servidor. Resultado: la app comparaba la copia consigo misma y el aviso de "version nueva"
+ * no salia NUNCA. Se descubrio con scripts/test-deteccion-version.mjs, que levanta la version
+ * anterior de verdad y comprueba que la app se entera del cambio.
  */
 function claveDe(request) {
   const url = new URL(request.url)
-  return new Request(url.origin + url.pathname, { method: 'GET' })
+  return new Request(url.origin + url.pathname + url.search, { method: 'GET' })
 }
 
 /** Guarda una respuesta valida en cache sin bloquear la respuesta al cliente. */
 async function store(request, response) {
   try {
+    const url = new URL(request.url)
+
+    /*
+     * Las comprobaciones de version NO se guardan.
+     *
+     * La app pide `index.html?comprobacion=123` para saber si hay version nueva. Si esa
+     * respuesta se guardara, la cache se llenaria de copias del mismo index (una por
+     * comprobacion) y ademas quedaria una copia mas que podria devolverse por error. Para
+     * servir la app ya esta la copia canonica, sin parametros.
+     */
+    if (url.pathname.endsWith('/index.html') && url.search) return
+
     const cache = await caches.open(CACHE)
     await cache.put(claveDe(request), response)
   } catch {
@@ -169,8 +188,13 @@ self.addEventListener('fetch', (event) => {
         const copia = await buscar(indice)
         const respuestaRed = await conLimite(fetch(claveDe(indice)), LIMITE_NAVEGACION_MS)
         if (respuestaRed && respuestaRed.ok) {
+          /*
+           * Se guarda SIEMPRE bajo la clave canonica de index.html, nunca bajo la direccion
+           * concreta de la navegacion. Si no, abrir la app por "/" y por "/index.html" dejaria
+           * dos copias de la misma pagina, que es justo el fallo que hacia que se sirviera una
+           * version antigua (lo comprueba scripts/update-banner.mjs).
+           */
           await store(indice, respuestaRed.clone())
-          await store(request, respuestaRed.clone())
           return respuestaRed
         }
         if (copia) return copia

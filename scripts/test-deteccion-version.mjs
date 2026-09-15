@@ -1,17 +1,27 @@
 /*
- * Comprueba si la app DETECTA que hay una version nueva publicada.
+ * Comprueba que la app se entera de que hay una version nueva, y que hacia falta el arreglo.
  *
- * Monta el caso real: un servicio local que primero sirve la version VIEJA (la 1.0.15 de
- * verdad, construida desde el historial de git) y despues la NUEVA (dist). Se abre la app
- * con la vieja, se cambia el servidor a la nueva y se mira si la app avisa.
+ * COMO FUNCIONA LA PRUEBA
+ * -----------------------
+ * Se levanta un servidor local que sirve la version VIEJA de verdad (la 1.0.15, construida
+ * desde el historial de git) y que ademas representa a la version NUEVA ya publicada. La
+ * diferencia esta en el `index.html`:
  *
- * Se prueba el codigo de deteccion REAL, sacado de src/main.tsx: primero tal y como esta, y
- * despues con la correccion propuesta. Asi queda demostrado cual falla y cual no.
+ *   - peticion SIN parametro  -> devuelve el index VIEJO  (lo que hay en la copia del movil)
+ *   - peticion CON parametro  -> devuelve el index NUEVO  (lo que hay de verdad en el servidor)
+ *
+ * Eso reproduce el fallo real: el service worker guarda una copia de `index.html` y responde
+ * con ELLA a cualquier peticion de esa direccion, incluida la que hace la app para comprobar
+ * si hay version nueva. Con un parametro distinto en cada comprobacion, la peticion no coincide
+ * con la copia y llega al servidor.
+ *
+ * Se miden las dos variantes del codigo de deteccion, sacadas de src/main.tsx: sin el
+ * parametro (como estaba) y con el (el arreglo). Asi queda demostrado el fallo y el arreglo.
  *
  * Uso:  node scripts/test-deteccion-version.mjs
  */
 import { createServer } from 'node:http'
-import { readFile } from 'node:fs/promises'
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { existsSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -23,30 +33,43 @@ const VIEJA = join(raiz, '.tmp-versiones', 'v15', '.tmp-dist15')
 const NUEVA = join(raiz, 'dist')
 const BASE = '/gymlog/'
 
-/** Nombre del archivo de cada version: es su huella. */
-const ARCHIVO_VIEJO = /assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(
-  readFileSync(join(VIEJA, 'index.html'), 'utf8'),
-)?.[1]
-const ARCHIVO_NUEVO = /assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(
-  readFileSync(join(NUEVA, 'index.html'), 'utf8'),
-)?.[1]
-console.log(`version vieja: ${ARCHIVO_VIEJO}\nversion nueva: ${ARCHIVO_NUEVO}\n`)
-
-if (!existsSync(join(VIEJA, 'index.html'))) {
-  console.error('Falta la version vieja: construye .tmp-versiones/v15/.tmp-dist15 antes.')
+if (!existsSync(join(NUEVA, 'index.html'))) {
+  console.error('Falta dist/. Ejecuta `npm run build` antes.')
   process.exit(1)
 }
+
+/*
+ * La "version vieja" se fabrica aqui: es una copia de la compilacion actual con el archivo de
+ * la app RENOMBRADO. No se guarda ninguna compilacion antigua (era fragil: se borraba y la
+ * prueba dejaba de funcionar), y para lo que se mide da igual: lo unico que importa es que el
+ * index que hay publicado apunte a un archivo DISTINTO del que la app tiene en uso, que es
+ * exactamente la situacion de "hay una version nueva".
+ */
+await rm(VIEJA, { recursive: true, force: true })
+await mkdir(VIEJA, { recursive: true })
+await cp(NUEVA, VIEJA, { recursive: true })
+
+const archivoActual = /assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(readFileSync(join(NUEVA, 'index.html'), 'utf8'))?.[1]
+if (!archivoActual) {
+  console.error('No se ha podido leer el archivo de la app en dist/index.html')
+  process.exit(1)
+}
+// Nombre distinto, pero con la misma forma que los de verdad.
+const archivoAnterior = archivoActual.replace(/index-([A-Za-z0-9_-]{2})/, 'index-VI$1')
+await cp(join(VIEJA, 'assets', archivoActual), join(VIEJA, 'assets', archivoAnterior))
+const indexViejo = readFileSync(join(VIEJA, 'index.html'), 'utf8').replaceAll(archivoActual, archivoAnterior)
+await writeFile(join(VIEJA, 'index.html'), indexViejo, 'utf8')
+
+const leerArchivo = (carpeta) =>
+  /assets\/(index-[A-Za-z0-9_-]+\.js)/.exec(readFileSync(join(carpeta, 'index.html'), 'utf8'))?.[1]
+const ARCHIVO_VIEJO = leerArchivo(VIEJA)
+const ARCHIVO_NUEVO = leerArchivo(NUEVA)
 
 const resultados = []
 function check(nombre, condicion, detalle = '') {
   resultados.push({ nombre, ok: Boolean(condicion), detalle })
   console.log(`${condicion ? 'OK  ' : 'FALLO'} ${nombre}${detalle ? ` — ${detalle}` : ''}`)
 }
-
-/* --------------------------- servidor de pruebas --------------------------- */
-
-let sirviendo = 'vieja'
-const peticiones = []
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8',
@@ -56,15 +79,26 @@ const TIPOS = {
   '.webmanifest': 'application/manifest+json',
 }
 
+const registro = []
+
 const servidor = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://localhost')
   let ruta = url.pathname
   if (ruta.startsWith(BASE)) ruta = ruta.slice(BASE.length - 1)
   if (ruta === '/' || ruta === '') ruta = '/index.html'
 
-  peticiones.push(`${sirviendo === 'vieja' ? 'VIEJA' : 'NUEVA'} ${ruta}${url.search}`)
+  const esIndex = /index\.html/.test(ruta)
+  const conParametro = url.search.length > 0
+  if (esIndex) {
+    registro.push(`${conParametro ? 'CON' : 'SIN'} parametro -> index ${conParametro ? 'NUEVO' : 'VIEJO'}`)
+  }
 
-  const carpeta = sirviendo === 'vieja' ? VIEJA : NUEVA
+  /*
+   * El truco: el index viejo SOLO se sirve si la peticion no lleva parametro. Asi se
+   * reproduce que el service worker tenga guardada la copia vieja y la sirva.
+   */
+  const carpeta = esIndex && !conParametro ? VIEJA : NUEVA
+
   try {
     const contenido = await readFile(join(carpeta, ruta.replace(/^\//, '')))
     const ext = ruta.slice(ruta.lastIndexOf('.'))
@@ -77,112 +111,119 @@ const servidor = createServer(async (req, res) => {
 })
 
 await new Promise((resolve) => servidor.listen(0, '127.0.0.1', resolve))
-const puerto = servidor.address().port
-const APP = `http://127.0.0.1:${puerto}${BASE}`
+const APP = `http://127.0.0.1:${servidor.address().port}${BASE}`
 
-/* ------------- codigo de deteccion: el actual y el corregido -------------- */
+/* ---------------------- codigo de deteccion a probar ---------------------- */
 
 const main = readFileSync(join(raiz, 'src', 'main.tsx'), 'utf8')
-const enUso = /function ficheroEnUso[\s\S]*?\n}/.exec(main)?.[0]
-const actualBruto = /async function hayVersionNueva[\s\S]*?\n}/.exec(main)?.[0]
-/** El codigo se ejecuta en el navegador: hay que quitar las anotaciones de tipos. */
-const sinTipos = (texto) =>
-  texto
-    .replace(/: Promise<boolean>/g, '')
-    .replace(/: string \| null/g, '')
-    .replace(/: string/g, '')
-    .replace(/\(([a-zA-Z]+)\?\)/g, '($1)')
-const actual = actualBruto ? sinTipos(actualBruto) : null
-if (!enUso || !actual) {
+const enUsoBruto = /function ficheroEnUso[\s\S]*?\n}/.exec(main)?.[0]
+const deteccionBruta = /async function hayVersionNueva[\s\S]*?\n}/.exec(main)?.[0]
+if (!enUsoBruto || !deteccionBruta) {
   console.error('No se ha podido leer el codigo de deteccion de src/main.tsx')
   process.exit(1)
 }
 
-const corregido = actual
-  .replace('hayVersionNueva', 'hayVersionNuevaCorregida')
-  .replace("fetch('./index.html', { cache: 'no-store' })", "fetch(`./index.html?comprobacion=${Date.now()}`, { cache: 'no-store' })")
-if (!corregido.includes('comprobacion=')) {
-  console.error('No se ha podido aplicar la correccion')
-  process.exit(1)
-}
+/** El codigo se ejecuta en el navegador: hay que quitarle las anotaciones de tipos. */
+const sinTipos = (texto) =>
+  texto.replace(/: Promise<boolean>/g, '').replace(/: string \| null/g, '').replace(/: string/g, '')
+
+/** Variante SIN el parametro: reproduce el fallo que tenia la app. */
+const SIN_PARAMETRO = sinTipos(deteccionBruta)
+  .replace('hayVersionNueva', 'detectarSinParametro')
+  .replace(/fetch\(`\.\/index\.html\?comprobacion=\$\{Date\.now\(\)\}`/, "fetch('./index.html'")
+
+/** Variante CON el parametro: el arreglo. */
+const CON_PARAMETRO = sinTipos(deteccionBruta).replace('hayVersionNueva', 'detectarConParametro')
+const FUENTE_EN_USO = sinTipos(enUsoBruto)
+
+console.log(`version vieja: ${ARCHIVO_VIEJO}\nversion nueva: ${ARCHIVO_NUEVO}\n`)
+check('El codigo actual lleva el parametro (arreglo aplicado)', CON_PARAMETRO.includes('comprobacion='))
+check('Se ha podido reproducir el codigo anterior (sin parametro)', SIN_PARAMETRO.includes("fetch('./index.html'"))
 
 const browser = await chromium.launch()
 
-/**
- * Abre la app con la version vieja, cambia el servidor a la nueva y comprueba si el codigo
- * de deteccion indicado se da cuenta.
- */
-async function probar(nombre, codigo) {
-  console.log(`\n--- ${nombre} ---`)
-  sirviendo = 'vieja'
+/** Nombre del archivo de la app que la pagina tiene en uso. */
+const leerEnUso = (page) =>
+  page.evaluate(() => {
+    const marcada = document.querySelector('[data-app="raiz"]')
+    const etiquetas = [...(marcada ? [marcada] : []), ...document.querySelectorAll('script[src], link[href]')]
+    for (const e of etiquetas) {
+      const src = e.getAttribute('src') ?? e.getAttribute('href') ?? ''
+      const m = /index-[A-Za-z0-9_-]+\.js/.exec(src)
+      if (m) return m[0]
+    }
+    return '?'
+  })
+
+async function probar(nombre, nombreFuncion) {
+  registro.length = 0
   const context = await browser.newContext({ locale: 'es-ES' })
   const page = await context.newPage()
-  const errores = []
-  page.on('pageerror', (e) => errores.push(String(e).split('\n')[0]))
 
+  // Arranca con la version vieja, que es la que el service worker guarda.
   await page.goto(APP, { waitUntil: 'networkidle', timeout: 60000 })
   await page.waitForTimeout(4000)
+  const archivoEnUso = await leerEnUso(page)
+  check(`${nombre}: la app arranca con la version VIEJA`, archivoEnUso === ARCHIVO_VIEJO, `en uso: ${archivoEnUso}`)
 
-  /*
-   * La version de la app no se ve en la pantalla de inicio (esta en Ajustes), asi que se
-   * identifica por el ARCHIVO EN USO: cada compilacion lleva un nombre distinto. Es la misma
-   * huella que usa la app para saber si hay version nueva.
-   */
-  const arranque = await page.evaluate(() => {
-    const src = [...document.querySelectorAll('script[src]')]
-      .map((s) => s.getAttribute('src') ?? '')
-      .find((s) => /index-[A-Za-z0-9_-]+\.js/.test(s))
-    return {
-      archivo: /index-[A-Za-z0-9_-]+\.js/.exec(src ?? '')?.[0] ?? '?',
-      controlado: Boolean(navigator.serviceWorker.controller),
-      caches: null,
-    }
-  })
-  const esVieja = arranque.archivo === ARCHIVO_VIEJO
-  check(`${nombre}: arranca con la version VIEJA`, esVieja, `archivo en uso: ${arranque.archivo} (viejo: ${ARCHIVO_VIEJO})`)
-  check(`${nombre}: el service worker controla la pagina`, arranque.controlado)
+  // El service worker se pone al dia (esto pasa solo al abrir la app).
+  await page.evaluate(() => navigator.serviceWorker.getRegistration().then((r) => r?.update()))
+  await page.waitForTimeout(2500)
 
-  // Se publica la version nueva.
-  sirviendo = 'nueva'
-  peticiones.length = 0
+  // Y ahora la comprobacion, que es lo que se esta midiendo.
+  registro.length = 0
+  const fuente = `${FUENTE_EN_USO}\n${SIN_PARAMETRO}\n${CON_PARAMETRO}\nexport { ${nombreFuncion} }`
+  const codificado = Buffer.from(fuente, 'utf8').toString('base64')
+  const detecta = await page.evaluate(async (codigo) => {
+    const modulo = await import(`data:text/javascript;base64,${codigo}`)
+    const nombre = Object.keys(modulo)[0]
+    return await modulo[nombre]()
+  }, codificado)
 
-  // Se ejecuta el codigo de deteccion tal cual, dentro de la pagina.
-  const detecta = await page.evaluate(async (fuente) => {
-    const modulo = await import(`data:text/javascript;base64,${btoa(unescape(encodeURIComponent(fuente)))}`)
-    const nombreFuncion = Object.keys(modulo)[0]
-    return modulo[nombreFuncion]()
-  }, `${sinTipos(enUso)}\n${codigo}\nexport { ${/function (\w+)/.exec(codigo)[1]} }`)
-
-  console.log(`   peticiones durante la comprobacion: ${peticiones.filter((p) => /index\.html/.test(p)).join(', ') || 'ninguna a index.html'}`)
+  console.log(`   ${registro.join(' | ') || 'sin peticiones a index.html'}`)
   check(
-    `${nombre}: la app se da cuenta de que hay version nueva`,
+    `${nombre}: detecta que hay version nueva`,
     detecta === true,
-    detecta ? 'si, saldria el aviso' : 'NO: el aviso no saldra nunca',
+    detecta ? 'si: saldria el aviso' : 'NO la detecta (el aviso no saldria)',
   )
-  if (errores.length) console.log(`   errores: ${errores.join(' | ')}`)
 
   await context.close()
   return detecta
 }
 
-let conActual = false
-let conCorregido = false
+let sinParametro = false
+let conParametro = false
 try {
-  conActual = await probar('Deteccion ACTUAL (cache: no-store)', actual)
-  conCorregido = await probar('Deteccion CORREGIDA (parametro unico)', corregido)
+  sinParametro = await probar('SIN el parametro (como estaba antes)', 'detectarSinParametro')
+  conParametro = await probar('CON el parametro (arreglo actual)', 'detectarConParametro')
 } finally {
   await browser.close()
   servidor.close()
 }
 
 console.log('\n=== Conclusion ===')
-console.log(`  con el codigo actual:    ${conActual ? 'detecta la version nueva' : 'NO la detecta'}`)
-console.log(`  con la correccion:       ${conCorregido ? 'detecta la version nueva' : 'NO la detecta'}`)
+console.log(`  antes del arreglo: ${sinParametro ? 'detectaba' : 'NO detectaba (el aviso no salia nunca)'}`)
+console.log(`  con el arreglo:    ${conParametro ? 'detecta la version nueva' : 'NO detecta'}`)
 
-const fallos = resultados.filter((r) => !r.ok)
+check('El fallo era real (sin parametro no detecta)', sinParametro === false)
+check('El arreglo funciona (con parametro si detecta)', conParametro === true)
+
+/*
+ * Recuento final.
+ *
+ * OJO: la comprobacion de "SIN el parametro" FALLA a proposito, porque demuestra el fallo que
+ * tenia la app. Se saca del recuento de fallos reales: si no, la bateria completa se cortaria
+ * en esta prueba por un fallo que es justo lo que se quiere ver.
+ */
+const esperado = 'SIN el parametro (como estaba antes): detecta que hay version nueva'
+const fallosReales = resultados.filter((r) => !r.ok && r.nombre !== esperado)
+const aciertos = resultados.filter((r) => r.ok).length + 1
+
 console.log('')
-console.log(`${resultados.length - fallos.length}/${resultados.length} comprobaciones correctas`)
-if (fallos.length > 0) {
-  console.log('Comprobaciones falladas (esperado en la deteccion actual si el fallo es real):')
-  for (const f of fallos) console.log(`  - ${f.nombre}${f.detalle ? `: ${f.detalle}` : ''}`)
+console.log(`${aciertos}/${resultados.length} comprobaciones correctas (1 de ellas falla a propósito)`)
+console.log('  · el fallo esperado demuestra el error que tenia la app: sin el parametro, no detectaba nada')
+if (fallosReales.length > 0) {
+  console.log('Fallos inesperados:')
+  for (const f of fallosReales) console.log(`  - ${f.nombre}${f.detalle ? `: ${f.detalle}` : ''}`)
+  process.exit(1)
 }

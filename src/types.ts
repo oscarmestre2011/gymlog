@@ -244,8 +244,15 @@ export interface Settings {
   keepScreenOn: boolean
   /** Duracion del aviso del descanso: 'corto' (un pitido), 'largo' o 'muy-largo'. */
   alertLength: 'corto' | 'largo' | 'muy-largo'
-  /** Altura en cm, para calcular el IMC y la relacion cintura/altura. */
-  heightCm: number
+  /**
+   * Altura en cm, para calcular el IMC y la relacion cintura/altura.
+   *
+   * SIN valor por defecto a proposito: la app la usa mas gente, cada uno con su altura. Si se
+   * pusiera la de una persona, los demas verian un IMC y un indicador cintura/altura MAL
+   * calculados y sin ningun aviso, que es la peor forma de fallar. Si no hay altura, esos
+   * indicadores no se muestran y la app pide que se configure.
+   */
+  heightCm?: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -259,7 +266,6 @@ export const DEFAULT_SETTINGS: Settings = {
   backupReminderDays: 7,
   keepScreenOn: true,
   alertLength: 'largo',
-  heightCm: 174,
 }
 
 /** Formato de fichero de copia de seguridad. */

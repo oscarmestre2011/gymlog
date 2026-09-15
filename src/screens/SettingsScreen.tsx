@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BackupFile, Settings } from '../types'
 import {
   getExerciseHistory,
@@ -12,7 +12,18 @@ import { db } from '../db'
 import { seedIfEmpty } from '../db/seed'
 import { ConfirmDialog } from '../components/Modal'
 import { descargarArchivo, descargarCopiaDeSeguridad } from '../lib/descargar'
+import { VERSIONES } from '../lib/changelog'
 import { audioDisponible, duracionDelAviso } from '../lib/audio'
+import { NumberInput } from '../components/NumberInput'
+import { Novedades } from '../components/Novedades'
+import {
+  copiarACarpeta,
+  elegirCarpeta,
+  leerCarpeta,
+  nombreDeCopia,
+  soportado,
+  type CarpetaElegida,
+} from '../lib/copiaAutomatica'
 import type { EstadoPantalla } from '../hooks/useWakeLock'
 import { KairosMark } from '../components/KairosMark'
 import { exerciseSummary } from '../lib/format'
@@ -37,6 +48,32 @@ export function SettingsScreen({
   const [confirmWipe, setConfirmWipe] = useState(false)
   const [confirmReseed, setConfirmReseed] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  /* ------------------- copia automatica en una carpeta ------------------- */
+  const [carpeta, setCarpeta] = useState<CarpetaElegida | null>(null)
+  const [estadoCarpeta, setEstadoCarpeta] = useState<'cargando' | 'lista' | 'sin-permiso'>('cargando')
+  const [verNovedades, setVerNovedades] = useState(false)
+  /** Si el navegador no permite carpetas (iPhone), se explica en lugar de ofrecer un boton inutil. */
+  const hayCarpetas = soportado()
+
+  useEffect(() => {
+    let vivo = true
+    void (async () => {
+      const guardada = await leerCarpeta()
+      if (!vivo) return
+      setCarpeta(guardada)
+      if (!guardada) {
+        setEstadoCarpeta('lista')
+        return
+      }
+      const { permisoParaEscribir } = await import('../lib/copiaAutomatica')
+      const puede = await permisoParaEscribir(guardada, false)
+      if (vivo) setEstadoCarpeta(puede ? 'lista' : 'sin-permiso')
+    })()
+    return () => {
+      vivo = false
+    }
+  }, [])
 
   /** Se usa el ayudante compartido: la misma descarga que el aviso de la portada. */
   const download = (contents: string, filename: string, type = 'text/plain') =>
@@ -191,6 +228,178 @@ export function SettingsScreen({
           <p className="tiny muted" style={{ margin: '6px 0 0' }}>
             El aviso sonoro dura unos {(duracionDelAviso(settings.alertLength ?? 'largo') / 1000).toFixed(1)} s
             {audioDisponible() ? '' : ' (este navegador no permite sonidos: se verá en pantalla)'}.
+          </p>
+        </div>
+      </div>
+
+      {/* --------------------- carpeta para las copias ---------------------- */}
+      <div className="card">
+        <h2 className="card-title">Carpeta de copias</h2>
+
+        {!hayCarpetas ? (
+          <p className="small muted" style={{ margin: 0 }}>
+            Este navegador no permite guardar en una carpeta del móvil (en iPhone no existe esa
+            opción: es una limitación de Safari, no de la app). Usa <b>Descargar copia</b> y guarda
+            el archivo donde quieras.
+          </p>
+        ) : (
+          <>
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Elige una carpeta y la app guardará ahí una copia sola, sin que tengas que hacer nada.
+              Es más cómodo que descargar el archivo a mano.
+            </p>
+
+            <div className="kv">
+              <span className="k">Carpeta</span>
+              <span className="v">
+                {carpeta ? `📁 ${carpeta.name}` : 'sin elegir'}
+                {carpeta && estadoCarpeta === 'sin-permiso' ? ' · permiso caducado' : ''}
+              </span>
+            </div>
+
+            {carpeta && estadoCarpeta === 'sin-permiso' ? (
+              <p className="small warn" style={{ marginTop: 8 }}>
+                El navegador ha retirado el permiso para escribir en esa carpeta (pasa al cerrarlo
+                del todo). Pulsa «Comprobar y guardar ahora» para volver a darlo.
+              </p>
+            ) : null}
+
+            <div className="row wrap" style={{ gap: 8, marginTop: 10 }}>
+              <button
+                className="btn"
+                disabled={busy}
+                onClick={async () => {
+                  const resultado = await elegirCarpeta()
+                  if (resultado.estado === 'cancelada') return
+                  if (resultado.estado === 'no-guardada' || !resultado.carpeta) {
+                    notify('No se ha podido recordar la carpeta: prueba con otra')
+                    return
+                  }
+                  setCarpeta(resultado.carpeta)
+                  setEstadoCarpeta('lista')
+                  notify(`Carpeta elegida: ${resultado.carpeta.name}`)
+                }}
+              >
+                {carpeta ? 'Cambiar de carpeta' : '📁 Elegir carpeta'}
+              </button>
+              <button
+                className="btn primary"
+                disabled={busy}
+                onClick={async () => {
+                  if (!carpeta) {
+                    // Sin carpeta no hay donde copiar: se dice, en lugar de dejar el boton muerto.
+                    notify('Elige primero una carpeta')
+                    return
+                  }
+                  setBusy(true)
+                  try {
+                    const resultado = await copiarACarpeta({ pedirPermiso: true })
+                    if (resultado.estado === 'guardada') {
+                      setEstadoCarpeta('lista')
+                      notify(`Copia guardada en ${resultado.carpeta}`)
+                    } else if (resultado.estado === 'sin-permiso') {
+                      setEstadoCarpeta('sin-permiso')
+                      notify('Sin permiso para escribir en la carpeta')
+                    } else if (resultado.estado === 'error') {
+                      notify(`No se pudo guardar: ${resultado.detalle}`)
+                    }
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+              >
+                Comprobar y guardar ahora
+              </button>
+              {carpeta ? (
+                <button
+                  className="btn ghost"
+                  disabled={busy}
+                  onClick={async () => {
+                    await (await import('../lib/copiaAutomatica')).guardarCarpeta(null)
+                    setCarpeta(null)
+                    notify('Carpeta olvidada')
+                  }}
+                >
+                  Olvidar carpeta
+                </button>
+              ) : null}
+            </div>
+
+            <div className="field" style={{ marginTop: 12 }}>
+              <label>Copia automática</label>
+              <div className="row wrap" style={{ gap: 6 }}>
+                {[
+                  { semanas: 0, texto: 'Desactivada' },
+                  { semanas: 1, texto: 'Semanal' },
+                  { semanas: 2, texto: 'Quincenal' },
+                  { semanas: 4, texto: 'Mensual' },
+                ].map((opcion) => (
+                  <button
+                    key={opcion.semanas}
+                    className={`chip${settings.autoBackupWeeks === opcion.semanas ? ' active' : ''}`}
+                    onClick={() => void onSave({ autoBackupWeeks: opcion.semanas })}
+                  >
+                    {opcion.texto}
+                  </button>
+                ))}
+              </div>
+              <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+                La copia se hace al abrir la app cuando toca, sin preguntar nada. Guarda un archivo
+                por día, con la fecha en el nombre (<code>{nombreDeCopia()}</code>).
+              </p>
+            </div>
+
+            <p className="tiny muted" style={{ marginTop: 10, marginBottom: 0 }}>
+              Una carpeta del propio móvil te protege de borrar los datos del navegador o de
+              desinstalar la app, pero <b>no de perder el móvil</b>: para eso, saca el archivo del
+              teléfono de vez en cuando (compártelo o súbelo a la nube).
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* ------------------------------ novedades ------------------------------ */}
+      <div className="card">
+        <h2 className="card-title">Novedades</h2>
+        <p className="small muted" style={{ marginTop: 0 }}>
+          Qué ha cambiado en cada versión, desde el principio ({VERSIONES.length} versiones).
+        </p>
+        <button className="btn block" onClick={() => setVerNovedades(true)}>
+          Ver el historial de versiones
+        </button>
+      </div>
+
+      {verNovedades ? (
+        <div className="overlay">
+          <div className="overlay-head">
+            <button className="icon-btn" onClick={() => setVerNovedades(false)} aria-label="Volver">
+              ←
+            </button>
+            <div className="grow">
+              <h1>Novedades</h1>
+              <div className="sub">Historial de versiones</div>
+            </div>
+          </div>
+          <Novedades onCerrar={() => setVerNovedades(false)} />
+        </div>
+      ) : null}
+
+      {/* ------------------------------- medidas ------------------------------- */}
+      <div className="card">
+        <h2 className="card-title">Medidas corporales</h2>
+        <div className="field">
+          <label htmlFor="ajuste-altura">Tu altura (cm)</label>
+          <NumberInput
+            value={settings.heightCm}
+            onChange={(v) => void onSave({ heightCm: v })}
+            integer
+            ariaLabel="Tu altura en centímetros"
+            placeholder="170"
+          />
+          <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+            Hace falta para el IMC y el indicador cintura/altura. Sin ella, esos dos indicadores no
+            se muestran: cada persona tiene su altura, y usar una que no es la tuya daría números
+            falsos.
           </p>
         </div>
       </div>
@@ -354,7 +563,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.0.16</span>
+          <span className="v">1.1.0</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

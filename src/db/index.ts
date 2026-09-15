@@ -54,6 +54,23 @@ export class GymLogDB extends Dexie {
       measurements: 'id, date',
       settings: 'id',
     })
+    /*
+     * Version 4: la carpeta elegida para las copias automaticas.
+     *
+     * Va en su propio almacen porque lo que se guarda es un "handle" del sistema de archivos:
+     * un objeto que IndexedDB sabe serializar y el almacenamiento de texto no. Se declara aqui
+     * (y no se crea a mano) para que exista siempre, tambien en una instalacion nueva.
+     */
+    this.version(4).stores({
+      exercises: 'id, name, group, favorite',
+      routines: 'id, name, updatedAt',
+      sessions: 'id, date, startedAt, routineId',
+      sets: 'id, sessionId, exerciseId, completedAt, [exerciseId+completedAt]',
+      cardio: 'id, date, sessionId, activity',
+      measurements: 'id, date',
+      'carpeta-copia': 'clave',
+      settings: 'id',
+    })
   }
 }
 

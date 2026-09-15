@@ -1,0 +1,12 @@
+Kairós — archivo de la aplicación.
+
+Este archivo existe para que la etiqueta que marca el archivo de la aplicación en index.html
+(la que lleva data-app="raiz") apunte a un archivo REAL. No se usa para nada más.
+
+Por qué hace falta:
+- La app necesita saber cuál de los archivos index-XXXX.js está ejecutándose, para compararlo
+  con el publicado y avisar de que hay versión nueva.
+- Esa marca no puede ir en la etiqueta del script, porque el compilador le elimina los
+  atributos id y data-* al preparar la versión publicada.
+- Y la etiqueta marcada no puede apuntar a una carpeta, porque el navegador intenta cargarla y
+  deja un error 404 en la consola (y las pruebas comprueban que no haya errores).

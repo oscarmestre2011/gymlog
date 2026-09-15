@@ -56,6 +56,16 @@ describe('indice de masa corporal', () => {
     expect(imc(80, undefined)).toBeNull()
     expect(imc(0, ALTURA)).toBeNull()
   })
+
+  /**
+   * Caso importante: la app la usa mas gente y la altura NO trae valor por defecto. Si no hay
+   * altura hay que devolver null, para que no se muestre un IMC calculado con la altura de
+   * otra persona: daria un numero falso sin ningun aviso.
+   */
+  it('sin altura no inventa el IMC', () => {
+    expect(imc(79.2, undefined)).toBeNull()
+    expect(imc(79.2, 0)).toBeNull()
+  })
 })
 
 describe('relacion cintura/altura', () => {
@@ -75,6 +85,12 @@ describe('relacion cintura/altura', () => {
     // Por debajo de 0,5 ya es sano.
     expect(riesgoCinturaAltura(cinturaAltura({ abdomenCm: 86 }, ALTURA))?.nivel).toBe('sano')
     expect(riesgoCinturaAltura(0.62)?.nivel).toBe('alto')
+    expect(riesgoCinturaAltura(null)).toBeNull()
+  })
+
+  it('sin altura no calcula la relacion (no usa la de nadie)', () => {
+    expect(cinturaAltura({ abdomenCm: 97 }, undefined)).toBeNull()
+    expect(cinturaAltura({ abdomenCm: 97 }, 0)).toBeNull()
     expect(riesgoCinturaAltura(null)).toBeNull()
   })
 })

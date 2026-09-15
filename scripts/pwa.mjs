@@ -14,7 +14,7 @@ import { readFile } from 'node:fs/promises'
 import { networkInterfaces } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, extname, join, normalize } from 'node:path'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const distDir = join(here, '..', 'dist')
@@ -114,23 +114,36 @@ async function reloadOffline(page) {
  * worker aun esta precargando, la recarga offline puede quedarse sin responder.
  * Es una condicion de carrera real, no un capricho de la prueba.
  */
+/**
+ * Nombre de la cache que usa el service worker, leido del propio sw.js.
+ *
+ * Antes estaba escrito a mano ("gymlog-v6") y fallaba cada vez que se subia la version de la
+ * cache, dando un fallo que parecia de la app y no lo era. Ahora se lee del fuente.
+ */
+const NOMBRE_CACHE = (() => {
+  const fuente = readFileSync(join(here, '..', 'public', 'sw.js'), 'utf8')
+  const version = /const VERSION = '(v\d+)'/.exec(fuente)?.[1]
+  if (!version) throw new Error('No se ha podido leer la VERSION del service worker')
+  return `gymlog-${version}`
+})()
+
 async function waitForCacheReady(page, timeout = 15000) {
   const started = Date.now()
   while (Date.now() - started < timeout) {
-    const state = await page.evaluate(async () => {
-      const cache = await caches.open('gymlog-v6')
+    const state = await page.evaluate(async (nombre) => {
+      const cache = await caches.open(nombre)
       const keys = await cache.keys()
       const paths = keys.map((request) => new URL(request.url).pathname)
       const hasHtml = paths.some((path) => path.endsWith('/') || path.endsWith('index.html'))
       const hasJs = paths.some((path) => path.endsWith('.js'))
       const hasCss = paths.some((path) => path.endsWith('.css'))
       return { total: keys.length, listo: hasHtml && hasJs && hasCss, hasHtml, hasJs, hasCss }
-    })
+    }, NOMBRE_CACHE)
     if (state.listo) return state
     await page.waitForTimeout(400)
   }
-  return page.evaluate(async () => {
-    const cache = await caches.open('gymlog-v6')
+  return page.evaluate(async (nombre) => {
+    const cache = await caches.open(nombre)
     const keys = await cache.keys()
     const paths = keys.map((request) => new URL(request.url).pathname)
     return {
@@ -140,7 +153,7 @@ async function waitForCacheReady(page, timeout = 15000) {
       hasJs: paths.some((path) => path.endsWith('.js')),
       hasCss: paths.some((path) => path.endsWith('.css')),
     }
-  })
+  }, NOMBRE_CACHE)
 }
 
 /* ============================== escenario A ============================== */
