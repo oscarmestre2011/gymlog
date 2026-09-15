@@ -28,6 +28,7 @@
     "test:backup": "node scripts/test-backup-reminder.mjs",
     "test:library": "node scripts/test-exercise-library.mjs",
     "test:supersets": "node scripts/test-supersets.mjs",
+    "test:medidas": "node scripts/test-medidas.mjs",
     "test:pantalla": "node scripts/test-pantalla-aviso.mjs",
     "verify": "npm run typecheck && npm run test && npm run build",
     "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",

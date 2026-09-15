@@ -10,6 +10,8 @@ import {
   listSets,
 } from '../db/repository'
 import { useQuery } from '../hooks'
+import { listMeasurements } from '../db/repository'
+import { MeasurementReminder } from '../components/MeasurementReminder'
 import { descargarCopiaDeSeguridad } from '../lib/descargar'
 import { BackupReminder } from '../components/BackupReminder'
 import { ConfirmDialog } from '../components/Modal'
@@ -50,6 +52,7 @@ export function HomeScreen({
   const { data: stats } = useQuery(() => getStats(), [refreshKey])
   const { data: sessions } = useQuery(() => listSessions(8), [refreshKey])
   const { data: cardio } = useQuery(() => listCardio(3), [refreshKey])
+  const { data: mediciones } = useQuery(() => listMeasurements(), [refreshKey], [])
   const { data: active } = useQuery(() => getActiveSession(), [refreshKey])
   const { data: activeSets } = useQuery(
     () => (active ? listSets(active.id) : Promise.resolve([])),
@@ -85,6 +88,9 @@ export function HomeScreen({
           setRefreshKey((k) => k + 1)
         }}
       />
+
+      {/* Aviso de que toca medirse: cada dos semanas, que es su ritmo real. */}
+      <MeasurementReminder mediciones={mediciones ?? []} onVer={() => onGoTo('progreso')} />
 
       {/* ------------------------------ sesion ------------------------------ */}
       {active ? (

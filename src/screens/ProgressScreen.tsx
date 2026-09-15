@@ -1,19 +1,23 @@
 import { useMemo, useState } from 'react'
 import {
   getExerciseHistory,
+  getSettings,
+  listMeasurements,
   getPersonalRecords,
   getWeeklyVolume,
   listTrainedExercises,
 } from '../db/repository'
 import { useQuery } from '../hooks'
 import { formatKilograms, formatNumber, prettyDate, startOfWeekISO, todayISO } from '../lib/format'
+import { cinturaAltura, resumenDe, riesgoCinturaAltura } from '../lib/medidas'
+import { DEFAULT_SETTINGS } from '../types'
 import { summarizeSets } from '../components/ExercisePicker'
 
 /**
  * Progresion por ejercicio. Replica la tabla que el usuario ya mantiene a mano
  * en su vault, pero generada sola a partir de las series registradas.
  */
-export function ProgressScreen() {
+export function ProgressScreen({ onVerMedidas }: { onVerMedidas?: () => void }) {
   const [selected, setSelected] = useState<string | null>(null)
   const { data: trained, loading } = useQuery(() => listTrainedExercises(), [])
 
@@ -44,6 +48,11 @@ export function ProgressScreen() {
   if (!trained || trained.length === 0) {
     return (
       <div className="screen">
+        {/*
+          Las medidas van ARRIBA y se muestran tambien cuando aun no hay series: se pueden
+          apuntar desde el primer dia, sin haber entrenado nunca.
+        */}
+        <ResumenMedidas onVer={onVerMedidas} />
         <div className="empty">
           <div className="big">📈</div>
           <p>Todavía no hay series registradas.</p>
@@ -55,6 +64,9 @@ export function ProgressScreen() {
 
   return (
     <div className="screen">
+      {/* --------------------------- medidas corporales ------------------------- */}
+      <ResumenMedidas onVer={onVerMedidas} />
+
       {/* ------------------------- selector de ejercicio ------------------------ */}
       <div className="chips">
         {trained.map((exercise) => (
@@ -204,6 +216,96 @@ export function ProgressScreen() {
             El 1RM es una estimación (fórmula de Epley) para comparar sesiones, no un intento real.
           </p>
         </div>
+      ) : null}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Resumen de medidas corporales dentro de la pantalla de progresion.
+ *
+ * Se muestran peso y cintura, que son las dos senales que el propio plan marca como
+ * fiables ("cintura quincenal abajo y fuerza arriba"), con acceso al historial completo.
+ */
+function ResumenMedidas({ onVer }: { onVer?: () => void }) {
+  const { data: mediciones } = useQuery(() => listMeasurements(), [], [])
+  const { data: settings } = useQuery(() => getSettings(), [], DEFAULT_SETTINGS)
+  const lista = mediciones ?? []
+
+  if (lista.length === 0) {
+    return (
+      <div className="card">
+        <div className="row between">
+          <div className="grow">
+            <h3 className="card-title" style={{ margin: 0 }}>
+              Medidas corporales
+            </h3>
+            <p className="small muted" style={{ margin: '4px 0 0' }}>
+              Apunta peso y cintura cada dos semanas para ver la evolución real.
+            </p>
+          </div>
+        </div>
+        {onVer ? (
+          <button className="btn block" style={{ marginTop: 10 }} onClick={onVer}>
+            📏 Añadir la primera medición
+          </button>
+        ) : null}
+      </div>
+    )
+  }
+
+  const peso = resumenDe(lista, 'weightKg')
+  const abdomen = resumenDe(lista, 'abdomenCm')
+  const ultima = lista[0]
+  const whTr = ultima ? cinturaAltura(ultima, settings?.heightCm || undefined) : null
+  const riesgo = riesgoCinturaAltura(whTr)
+
+  return (
+    <div className="card">
+      <div className="row between" style={{ marginBottom: 10 }}>
+        <h3 className="card-title" style={{ margin: 0 }}>
+          Medidas corporales
+        </h3>
+        <span className="tiny muted">{prettyDate(ultima.date)}</span>
+      </div>
+
+      <div className="stats">
+        {peso.ultima ? (
+          <div className="stat">
+            <div className="value">{formatNumber(peso.ultima.weightKg as number, 1)} kg</div>
+            <div className="label">Peso</div>
+            {peso.cambio ? (
+              <div className={`tiny ${peso.cambio < 0 ? 'good' : 'warn'}`}>
+                {peso.cambio > 0 ? '↑' : '↓'} {formatNumber(Math.abs(peso.cambio), 1)} kg
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {abdomen.ultima ? (
+          <div className="stat">
+            <div className="value">{formatNumber(abdomen.ultima.abdomenCm as number, 1)} cm</div>
+            <div className="label">Abdomen</div>
+            {abdomen.cambio ? (
+              <div className={`tiny ${abdomen.cambio < 0 ? 'good' : 'warn'}`}>
+                {abdomen.cambio > 0 ? '↑' : '↓'} {formatNumber(Math.abs(abdomen.cambio), 1)} cm
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {riesgo ? (
+        <p className="tiny muted" style={{ marginTop: 10, marginBottom: 0 }}>
+          Cintura/altura {formatNumber(whTr as number, 2)} · {riesgo.texto}
+        </p>
+      ) : null}
+
+      {onVer ? (
+        <button className="btn block" style={{ marginTop: 10 }} onClick={onVer}>
+          Ver todas las medidas
+        </button>
       ) : null}
     </div>
   )

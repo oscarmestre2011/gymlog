@@ -21,6 +21,7 @@ import { WelcomeScreen } from './screens/WelcomeScreen'
 import { SessionScreen } from './screens/SessionScreen'
 import { RoutinesScreen } from './screens/RoutinesScreen'
 import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen'
+import { MeasurementsScreen } from './screens/MeasurementsScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
 import { CardioScreen } from './screens/CardioScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
@@ -82,6 +83,8 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
    * alguien restaura sus datos en un movil nuevo.
    */
   const [verBienvenida, setVerBienvenida] = useState(false)
+  /** Pantalla de medidas corporales: se entra desde Progresion. */
+  const [verMedidas, setVerMedidas] = useState(false)
 
   const rest = useRestTimer(settings.soundOn, settings.vibrateOn, settings.alertLength)
   /**
@@ -318,6 +321,23 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   const showingSession = viewingSession && session !== null
   const title = showingSession && session ? session.routineName : titles[tab]
 
+  if (verMedidas) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <button className="icon-btn" onClick={() => setVerMedidas(false)} aria-label="Volver">
+            ←
+          </button>
+          <div className="grow">
+            <h1>Medidas corporales</h1>
+            <div className="sub">Peso, abdomen, pecho y muslo</div>
+          </div>
+        </header>
+        <MeasurementsScreen notify={notify} />
+      </div>
+    )
+  }
+
   return (
     <div className={`app${updateReady ? ' has-update' : ''}`}>
       <header className="topbar">
@@ -374,7 +394,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
           ) : tab === 'ejercicios' ? (
             <ExerciseLibraryScreen notify={notify} />
           ) : tab === 'progreso' ? (
-            <ProgressScreen />
+            <ProgressScreen onVerMedidas={() => setVerMedidas(true)} />
           ) : tab === 'cardio' ? (
             <CardioScreen notify={notify} />
           ) : (

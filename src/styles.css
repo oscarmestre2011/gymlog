@@ -512,6 +512,41 @@ select.input {
   transition: width 0.25s linear;
 }
 
+/* --------------------------- medidas corporales -------------------------- */
+
+/* Punto de color que indica el nivel de riesgo de un indicador. */
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+  background: var(--text-dim);
+  vertical-align: middle;
+}
+
+.dot.sano {
+  background: var(--accent);
+}
+
+.dot.atencion {
+  background: var(--warn);
+}
+
+.dot.alto,
+.dot.muy-alto {
+  background: var(--danger);
+}
+
+/* Un cambio que va en la direccion buena (bajar peso o cintura). */
+.good {
+  color: var(--accent);
+}
+
+.warn {
+  color: var(--warn);
+}
+
 /* ------------------------------ superseries ------------------------------ */
 
 /* Bloque que agrupa los ejercicios encadenados: se ve de un vistazo que van juntos. */

@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type {
+  BodyMeasurement,
   CardioEntry,
   Exercise,
   ExerciseSet,
@@ -19,6 +20,7 @@ export class GymLogDB extends Dexie {
   sessions!: Table<Session, string>
   sets!: Table<ExerciseSet, string>
   cardio!: Table<CardioEntry, string>
+  measurements!: Table<BodyMeasurement, string>
   settings!: Table<Settings, string>
 
   constructor(name = 'gymlog') {
@@ -40,6 +42,16 @@ export class GymLogDB extends Dexie {
       sessions: 'id, date, startedAt, routineId',
       sets: 'id, sessionId, exerciseId, completedAt, [exerciseId+completedAt]',
       cardio: 'id, date, sessionId, activity',
+      settings: 'id',
+    })
+    // Version 3: medidas corporales (peso, abdomen, pecho, muslo).
+    this.version(3).stores({
+      exercises: 'id, name, group, favorite',
+      routines: 'id, name, updatedAt',
+      sessions: 'id, date, startedAt, routineId',
+      sets: 'id, sessionId, exerciseId, completedAt, [exerciseId+completedAt]',
+      cardio: 'id, date, sessionId, activity',
+      measurements: 'id, date',
       settings: 'id',
     })
   }

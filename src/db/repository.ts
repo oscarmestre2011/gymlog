@@ -1,6 +1,7 @@
 import { db, newId } from './index'
 import type {
   BackupFile,
+  BodyMeasurement,
   CardioEntry,
   Exercise,
   ExerciseSet,
@@ -514,23 +515,57 @@ export async function deleteCardio(id: string): Promise<void> {
 }
 
 /* ------------------------------------------------------------------ */
+/* Medidas corporales                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Medidas corporales, de la mas reciente a la mas antigua.
+ *
+ * Se guardan aparte de las sesiones a proposito: se toman cada dos semanas, no todos los
+ * dias, y se consultan como una serie temporal (peso y cintura sobre todo).
+ */
+export async function listMeasurements(): Promise<BodyMeasurement[]> {
+  const todas = await db.measurements.toArray()
+  return todas.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt - a.createdAt)
+}
+
+export async function getMeasurement(id: string): Promise<BodyMeasurement | undefined> {
+  return db.measurements.get(id)
+}
+
+/** Medida de una fecha concreta, si existe (una por dia). */
+export async function getMeasurementByDate(date: string): Promise<BodyMeasurement | undefined> {
+  const delDia = await db.measurements.where('date').equals(date).toArray()
+  return delDia.sort((a, b) => b.createdAt - a.createdAt)[0]
+}
+
+export async function saveMeasurement(medicion: BodyMeasurement): Promise<void> {
+  await db.measurements.put(medicion)
+}
+
+export async function deleteMeasurement(id: string): Promise<void> {
+  await db.measurements.delete(id)
+}
+
+/* ------------------------------------------------------------------ */
 /* Copia de seguridad                                                  */
 /* ------------------------------------------------------------------ */
 
 export async function exportBackup(): Promise<BackupFile> {
-  const [exercises, routines, sessions, sets, cardio, settings] = await Promise.all([
+  const [exercises, routines, sessions, sets, cardio, measurements, settings] = await Promise.all([
     db.exercises.toArray(),
     db.routines.toArray(),
     db.sessions.toArray(),
     db.sets.toArray(),
     db.cardio.toArray(),
+    db.measurements.toArray(),
     db.settings.toArray(),
   ])
   return {
     format: 'gymlog-backup',
     version: 1,
     exportedAt: new Date().toISOString(),
-    data: { exercises, routines, sessions, sets, cardio, settings },
+    data: { exercises, routines, sessions, sets, cardio, measurements, settings },
   }
 }
 
@@ -544,11 +579,19 @@ export async function importBackup(
   if (backup.format !== 'gymlog-backup') {
     throw new Error('El archivo no es una copia de GymLog')
   }
-  const { exercises = [], routines = [], sessions = [], sets = [], cardio = [], settings = [] } = backup.data ?? {}
+  const {
+    exercises = [],
+    routines = [],
+    sessions = [],
+    sets = [],
+    cardio = [],
+    measurements = [],
+    settings = [],
+  } = backup.data ?? {}
 
   await db.transaction(
     'rw',
-    [db.exercises, db.routines, db.sessions, db.sets, db.cardio, db.settings],
+    [db.exercises, db.routines, db.sessions, db.sets, db.cardio, db.measurements, db.settings],
     async () => {
       if (mode === 'replace') {
         await Promise.all([
@@ -557,6 +600,7 @@ export async function importBackup(
           db.sessions.clear(),
           db.sets.clear(),
           db.cardio.clear(),
+          db.measurements.clear(),
         ])
       }
       await db.exercises.bulkPut(exercises)
@@ -564,6 +608,7 @@ export async function importBackup(
       await db.sessions.bulkPut(sessions)
       await db.sets.bulkPut(sets)
       await db.cardio.bulkPut(cardio)
+      await db.measurements.bulkPut(measurements)
       if (settings.length > 0) await db.settings.bulkPut(settings)
     },
   )
@@ -574,7 +619,7 @@ export async function importBackup(
 export async function wipeAll(): Promise<void> {
   await db.transaction(
     'rw',
-    [db.exercises, db.routines, db.sessions, db.sets, db.cardio, db.settings],
+    [db.exercises, db.routines, db.sessions, db.sets, db.cardio, db.measurements, db.settings],
     async () => {
       await Promise.all([
         db.exercises.clear(),
@@ -582,6 +627,7 @@ export async function wipeAll(): Promise<void> {
         db.sessions.clear(),
         db.sets.clear(),
         db.cardio.clear(),
+        db.measurements.clear(),
       ])
       await db.settings.put({ ...DEFAULT_SETTINGS })
     },

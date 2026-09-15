@@ -193,6 +193,27 @@ export interface Session {
   metrics: SessionMetrics
 }
 
+/** Medicion corporal de un dia. Todos los campos salvo la fecha son opcionales. */
+export interface BodyMeasurement {
+  id: string
+  /** YYYY-MM-DD */
+  date: string
+  /** Peso en kg. */
+  weightKg?: number
+  /** Perimetro abdominal en cm (a la altura del ombligo). Es el mas fiable. */
+  abdomenCm?: number
+  /** Cintura en cm (por encima del ombligo, la parte mas estrecha). */
+  waistCm?: number
+  chestCm?: number
+  /** Perimetro del muslo en cm. */
+  thighCm?: number
+  notes?: string
+  createdAt: number
+}
+
+/** Persona de la que son las medidas. */
+export type MeasurementPerson = 'yo' | 'cristina'
+
 export interface Settings {
   id: 'app'
   /** Descanso por defecto, en segundos, para ejercicios nuevos. */
@@ -223,6 +244,8 @@ export interface Settings {
   keepScreenOn: boolean
   /** Duracion del aviso del descanso: 'corto' (un pitido), 'largo' o 'muy-largo'. */
   alertLength: 'corto' | 'largo' | 'muy-largo'
+  /** Altura en cm, para calcular el IMC y la relacion cintura/altura. */
+  heightCm: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -236,6 +259,7 @@ export const DEFAULT_SETTINGS: Settings = {
   backupReminderDays: 7,
   keepScreenOn: true,
   alertLength: 'largo',
+  heightCm: 174,
 }
 
 /** Formato de fichero de copia de seguridad. */
@@ -249,6 +273,7 @@ export interface BackupFile {
     sessions: Session[]
     sets: ExerciseSet[]
     cardio: CardioEntry[]
+    measurements: BodyMeasurement[]
     settings: Settings[]
   }
 }
