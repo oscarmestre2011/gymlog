@@ -11,9 +11,12 @@ import { formatDuration } from '../lib/format'
 export function RoutinesScreen({
   notify,
   onStartRoutine,
+  onIrAEjercicios,
 }: {
   notify: (message: string) => void
   onStartRoutine: (routine: Routine) => void
+  /** Ir a la biblioteca de ejercicios, para crear uno nuevo que falte. */
+  onIrAEjercicios: () => void
 }) {
   const [editing, setEditing] = useState<Routine | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Routine | null>(null)
@@ -37,6 +40,18 @@ export function RoutinesScreen({
       <button className="btn primary block lg" onClick={createNew}>
         ＋ Nueva rutina
       </button>
+
+      <p className="tiny muted" style={{ margin: 0 }}>
+        ¿Te falta algún ejercicio? Se añaden desde{' '}
+        <button
+          className="link-button"
+          onClick={onIrAEjercicios}
+          style={{ background: 'transparent', border: 0, padding: 0, color: 'var(--accent)', font: 'inherit', cursor: 'pointer' }}
+        >
+          la biblioteca de ejercicios
+        </button>
+        , con su descripción y la parte del cuerpo que trabajan.
+      </p>
 
       {(routines?.length ?? 0) === 0 ? (
         <div className="empty">

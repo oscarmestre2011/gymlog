@@ -535,6 +535,17 @@ select.input {
   margin-bottom: 8px;
 }
 
+/* Descripcion del ejercicio (la que escribe el usuario): dato util, tono tranquilo. */
+.exercise-note {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-dim);
+  background: var(--bg-elev-2);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  margin-bottom: 8px;
+}
+
 /* Sin historico: aviso discreto, no un cartel que se repita en cada ejercicio. */
 .no-history {
   font-size: 0.78rem;
@@ -566,6 +577,17 @@ select.input {
 
 .chips::-webkit-scrollbar {
   display: none;
+}
+
+/**
+ * Variante para elegir entre opciones fijas y conocidas (parte del cuerpo, material):
+ * se reparten en varias filas. Con una sola fila con scroll, las opciones que no caben
+ * quedan ocultas y no se ve que haya mas: al crear un ejercicio no se encontraban ni
+ * "Pierna" ni "Core" sin deslizar de lado.
+ */
+.chips.chips-grid {
+  flex-wrap: wrap;
+  overflow-x: visible;
 }
 
 .chip {

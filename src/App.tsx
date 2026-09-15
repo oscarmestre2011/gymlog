@@ -18,6 +18,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { WelcomeScreen } from './screens/WelcomeScreen'
 import { SessionScreen } from './screens/SessionScreen'
 import { RoutinesScreen } from './screens/RoutinesScreen'
+import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen'
 import { ProgressScreen } from './screens/ProgressScreen'
 import { CardioScreen } from './screens/CardioScreen'
 import { SettingsScreen } from './screens/SettingsScreen'
@@ -28,7 +29,7 @@ import { StartupError } from './components/StartupError'
 import { KairosMark } from './components/KairosMark'
 import { todayISO, weekdayName } from './lib/format'
 
-export type Tab = 'inicio' | 'rutinas' | 'progreso' | 'cardio' | 'ajustes'
+export type Tab = 'inicio' | 'rutinas' | 'ejercicios' | 'progreso' | 'cardio' | 'ajustes'
 
 /** Datos de una serie nueva, tal y como los acepta el almacen. */
 /** Tiempo maximo que se espera al almacenamiento local antes de dar error. */
@@ -263,6 +264,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   const titles: Record<Tab, string> = {
     inicio: 'Kairós',
     rutinas: 'Mis rutinas',
+    ejercicios: 'Ejercicios',
     progreso: 'Progresión',
     cardio: 'Cardio',
     ajustes: 'Ajustes',
@@ -318,7 +320,13 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
         <>
           {session ? <SessionBanner onResume={() => setViewingSession(true)} /> : null}
           {tab === 'rutinas' ? (
-            <RoutinesScreen notify={notify} onStartRoutine={(routine) => void handleStart(routine)} />
+            <RoutinesScreen
+              notify={notify}
+              onStartRoutine={(routine) => void handleStart(routine)}
+              onIrAEjercicios={() => setTab('ejercicios')}
+            />
+          ) : tab === 'ejercicios' ? (
+            <ExerciseLibraryScreen notify={notify} />
           ) : tab === 'progreso' ? (
             <ProgressScreen />
           ) : tab === 'cardio' ? (
@@ -343,6 +351,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
           [
             ['inicio', '🏠', 'Inicio'],
             ['rutinas', '📋', 'Rutinas'],
+            ['ejercicios', '🏋️', 'Ejercicios'],
             ['progreso', '📈', 'Progreso'],
             ['cardio', '🚴', 'Cardio'],
             ['ajustes', '⚙️', 'Ajustes'],

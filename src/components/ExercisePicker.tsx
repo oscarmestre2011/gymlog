@@ -23,11 +23,14 @@ export function ExercisePicker({
   onPick,
   onClose,
   onCreate,
+  onEdit,
   usedIds = [],
 }: {
   onPick: (exerciseId: string, name: string) => void
   onClose: () => void
   onCreate?: (name: string) => void
+  /** Avisa de donde se editan los ejercicios (la biblioteca). */
+  onEdit?: () => void
   usedIds?: string[]
 }) {
   const [query, setQuery] = useState('')
@@ -103,6 +106,10 @@ export function ExercisePicker({
         <div className="empty">
           <div className="big">🔍</div>
           Ningún ejercicio coincide con «{query}».
+          <p className="tiny muted" style={{ marginTop: 8 }}>
+            Puedes crearlo aquí, y luego completar su descripción y la parte del cuerpo en la pestaña
+            Ejercicios.
+          </p>
         </div>
       ) : (
         <div className="list" style={{ marginTop: 8, maxHeight: '46dvh', overflowY: 'auto' }}>
@@ -120,17 +127,39 @@ export function ExercisePicker({
               onClick={() => onPick(exercise.id, exercise.name)}
             >
               <div className="main">
-                <div className="title">{exercise.name}</div>
+                <div className="title">
+                  {exercise.name}
+                  {exercise.custom ? (
+                    <span className="badge" style={{ marginLeft: 8 }}>
+                      mío
+                    </span>
+                  ) : null}
+                </div>
                 <div className="meta">
                   {exercise.group} · {exercise.equipment}
                   {exercise.side !== 'bilateral' ? ` · ${exercise.side.replace('-', ' ')}` : ''}
                 </div>
+                {/*
+                  La descripcion se ve AQUI, al elegir el ejercicio: es justo el momento en
+                  que hace falta recordar como se hacia.
+                */}
+                {exercise.description ? (
+                  <div className="tiny muted" style={{ marginTop: 3 }}>
+                    {exercise.description}
+                  </div>
+                ) : null}
               </div>
               {exercise.favorite ? <span className="badge">★</span> : null}
             </button>
           ))}
         </div>
       )}
+      {onEdit ? (
+        <p className="tiny muted" style={{ marginTop: 10, marginBottom: 0 }}>
+          Para cambiar la descripción o la parte del cuerpo de un ejercicio, ve a la pestaña{' '}
+          <b>Ejercicios</b>.
+        </p>
+      ) : null}
     </Modal>
   )
 }

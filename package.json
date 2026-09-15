@@ -26,6 +26,7 @@
     "test:multi-device": "node scripts/test-multi-device.mjs",
     "test:rename": "node scripts/test-rename.mjs",
     "test:backup": "node scripts/test-backup-reminder.mjs",
+    "test:library": "node scripts/test-exercise-library.mjs",
     "verify": "npm run typecheck && npm run test && npm run build",
     "verify:clean": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-clean-install.ps1",
     "test:all": "npm run typecheck && npm test && npm run test:smoke && npm run test:pwa && npm run test:pages && npm run test:update && npm run test:black-screen && npm run test:keep-data && npm run test:safari && npm run test:welcome && npm run test:multi-device && npm run test:rename && npm run test:backup",

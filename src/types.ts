@@ -41,11 +41,15 @@ export interface Exercise {
   group: MuscleGroup
   equipment: Equipment
   side: ExerciseSide
+  /** Como se hace el ejercicio: agarre, rango, precauciones. */
+  description?: string
   notes?: string
   /** Incremento minimo de disco disponible en la maquina/barra, en kg. */
   increment: number
   /** Marca los ejercicios que aparecen en el plan del usuario. */
   favorite?: boolean
+  /** Lo ha creado el usuario, no viene en la lista de serie. */
+  custom?: boolean
   createdAt: number
 }
 

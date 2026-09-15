@@ -10,18 +10,23 @@ import { db, newId } from './index'
 import { seedIfEmpty } from './seed'
 import {
   addSet,
+  countSetsByExercise,
+  deleteExercise,
   deleteSession,
   deleteSet,
   duplicateSet,
   exportBackup,
+  findExerciseByName,
   finishSession,
   getActiveSession,
+  getExercise,
   getExerciseHistory,
   getLastPerformance,
   getPersonalRecords,
   getStats,
   getWeeklyVolume,
   importBackup,
+  listExercises,
   listRoutines,
   listSessions,
   listSets,
@@ -30,6 +35,7 @@ import {
   saveRoutine,
   startSession,
   updateSet,
+  upsertExercise,
 } from './repository'
 import { suggestNextWeight } from '../lib/format'
 
@@ -384,6 +390,137 @@ describe('copia de seguridad', () => {
   })
 })
 
+describe('ejercicios propios', () => {
+  beforeEach(resetDatabase)
+
+  it('se pueden crear ejercicios con nombre, descripcion y parte del cuerpo', async () => {
+    const creado = await upsertExercise({
+      id: 'e_propio',
+      name: 'Remo invertido en mesa',
+      group: 'Espalda',
+      equipment: 'Peso corporal',
+      side: 'bilateral',
+      description: 'Cuerpo recto, pecho hacia la mesa, codos pegados.',
+      increment: 2.5,
+      custom: true,
+      createdAt: Date.now(),
+    })
+
+    const guardado = await getExercise(creado.id)
+    expect(guardado?.name).toBe('Remo invertido en mesa')
+    expect(guardado?.group).toBe('Espalda')
+    expect(guardado?.description).toContain('codos pegados')
+    expect(guardado?.custom).toBe(true)
+  })
+
+  it('aparece en la biblioteca con el resto', async () => {
+    await seedIfEmpty()
+    const antes = (await listExercises()).length
+    await upsertExercise({
+      id: 'e_nuevo',
+      name: 'Cossack squat',
+      group: 'Cuadriceps',
+      equipment: 'Peso corporal',
+      side: 'por-lado',
+      increment: 2.5,
+      custom: true,
+      createdAt: Date.now(),
+    })
+    const despues = await listExercises()
+    expect(despues.length).toBe(antes + 1)
+    expect(despues.some((e) => e.name === 'Cossack squat')).toBe(true)
+  })
+
+  it('se puede editar despues de crearlo', async () => {
+    await upsertExercise({
+      id: 'e_editar',
+      name: 'Ejercicio a medias',
+      group: 'Cuerpo completo',
+      equipment: 'Otro',
+      side: 'bilateral',
+      increment: 2.5,
+      custom: true,
+      createdAt: Date.now(),
+    })
+
+    // Es el caso real: se crea durante una sesion con lo minimo y se completa luego.
+    await upsertExercise({
+      id: 'e_editar',
+      name: 'Remo invertido en mesa',
+      group: 'Espalda',
+      equipment: 'Peso corporal',
+      side: 'bilateral',
+      description: 'Cuerpo recto y codos pegados al torso.',
+      increment: 2.5,
+      custom: true,
+      favorite: true,
+      createdAt: Date.now(),
+    })
+
+    const guardado = await getExercise('e_editar')
+    expect(guardado?.name).toBe('Remo invertido en mesa')
+    expect(guardado?.group).toBe('Espalda')
+    expect(guardado?.description).toBe('Cuerpo recto y codos pegados al torso.')
+    // No se duplica: sigue habiendo un solo ejercicio con ese identificador.
+    const todos = await listExercises()
+    expect(todos.filter((e) => e.id === 'e_editar')).toHaveLength(1)
+  })
+
+  it('se puede borrar de la biblioteca sin perder el historico', async () => {
+    await upsertExercise({
+      id: 'e_borrar',
+      name: 'Ejercicio temporal',
+      group: 'Core',
+      equipment: 'Peso corporal',
+      side: 'bilateral',
+      increment: 0,
+      custom: true,
+      createdAt: Date.now(),
+    })
+    const sesion = await seedSession('2026-09-14', [
+      { exerciseId: 'e_borrar', name: 'Ejercicio temporal', weight: 0, reps: 15, sets: 2 },
+    ])
+
+    await deleteExercise('e_borrar')
+
+    // Desaparece de la biblioteca...
+    expect(await getExercise('e_borrar')).toBeUndefined()
+    // ...pero las series apuntadas siguen ahi, con su nombre guardado.
+    const series = await listSets(sesion.id)
+    expect(series).toHaveLength(2)
+    expect(series[0].exerciseName).toBe('Ejercicio temporal')
+    const historico = await getExerciseHistory('e_borrar')
+    expect(historico).toHaveLength(1)
+    expect(historico[0].totalReps).toBe(30)
+  })
+
+  it('cuenta en cuantas series se ha usado cada ejercicio', async () => {
+    await seedSession('2026-09-14', [
+      { exerciseId: 'e_uso', name: 'Press banca', weight: 50, reps: 10, sets: 3 },
+      { exerciseId: 'e_otro', name: 'Back squat', weight: 60, reps: 8, sets: 2 },
+    ])
+    const usos = await countSetsByExercise()
+    expect(usos.e_uso).toBe(3)
+    expect(usos.e_otro).toBe(2)
+  })
+
+  it('avisa de nombres repetidos para no duplicar ejercicios', async () => {
+    await upsertExercise({
+      id: 'e_uno',
+      name: 'Press banca',
+      group: 'Pecho',
+      equipment: 'Barra',
+      side: 'bilateral',
+      increment: 2.5,
+      custom: true,
+      createdAt: Date.now(),
+    })
+    // La busqueda por nombre ignora mayusculas y acentos, que es como busca la gente.
+    expect((await findExerciseByName('press banca'))?.id).toBe('e_uno')
+    expect((await findExerciseByName('PRESS BANCA'))?.id).toBe('e_uno')
+    expect(await findExerciseByName('Press inclinado')).toBeUndefined()
+  })
+})
 describe('listados', () => {
   beforeEach(resetDatabase)
 

@@ -419,6 +419,22 @@ export async function findExerciseByName(name: string): Promise<Exercise | undef
   return all.find((e) => normalize(e.name) === target)
 }
 
+/**
+ * Cuantos entrenamientos usan cada ejercicio.
+ *
+ * Sirve para avisar antes de borrar o cambiar el nombre de un ejercicio: las series ya
+ * registradas guardan una copia del nombre, asi que el historico no se rompe, pero
+ * conviene decir cuantas veces se ha usado.
+ */
+export async function countSetsByExercise(): Promise<Record<string, number>> {
+  const sets = await db.sets.toArray()
+  const cuenta: Record<string, number> = {}
+  for (const set of sets) {
+    cuenta[set.exerciseId] = (cuenta[set.exerciseId] ?? 0) + 1
+  }
+  return cuenta
+}
+
 export async function upsertExercise(input: Omit<Exercise, 'createdAt'> & { createdAt?: number }): Promise<Exercise> {
   const existing = await db.exercises.get(input.id)
   const exercise: Exercise = {

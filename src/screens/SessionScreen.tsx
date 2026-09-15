@@ -186,6 +186,13 @@ export function SessionScreen({
     notify(`${name} añadido`)
   }
 
+  /**
+   * Crea un ejercicio que no estaba en la biblioteca, desde dentro de la sesion.
+   *
+   * Se marca como "mio" para que se pueda encontrar y completar despues en la pestana
+   * Ejercicios: aqui se crea con lo minimo (nombre y peso corporal) porque el usuario esta
+   * entrenando y no es momento de rellenar formularios.
+   */
   const handleCreateExercise = async (name: string) => {
     const exercise: Exercise = {
       id: newId('e_'),
@@ -194,11 +201,13 @@ export function SessionScreen({
       equipment: 'Otro',
       side: 'bilateral',
       increment: 2.5,
+      custom: true,
       createdAt: Date.now(),
     }
     await upsertExercise(exercise)
     setLibrary((lib) => [...lib, exercise])
     await handleAddExercise(exercise.id, name)
+    notify(`«${name}» añadido. Puedes completar su descripción en la pestaña Ejercicios.`)
   }
 
   const handleSaveSet = async (
@@ -332,6 +341,7 @@ export function SessionScreen({
           sets={byExercise.get(entry.exerciseId) ?? []}
           history={history[entry.exerciseId]}
           increment={incrementFor(entry.exerciseId)}
+          descripcion={library.find((e) => e.id === entry.exerciseId)?.description}
           onSaveSet={handleSaveSet}
           onRepeat={handleRepeat}
           onDeleteSet={handleDeleteSet}
@@ -410,6 +420,7 @@ export function SessionScreen({
           usedIds={orderedEntries.map((e) => e.exerciseId)}
           onPick={(id, name) => void handleAddExercise(id, name)}
           onCreate={(name) => void handleCreateExercise(name)}
+          onEdit={() => notify('Los ejercicios se editan en la pestaña Ejercicios')}
           onClose={() => setPickerOpen(false)}
         />
       ) : null}
@@ -446,6 +457,7 @@ function ExerciseCard({
   sets,
   history,
   increment,
+  descripcion,
   onSaveSet,
   onRepeat,
   onDeleteSet,
@@ -458,6 +470,8 @@ function ExerciseCard({
   sets: ExerciseSet[]
   history?: HistoryInfo
   increment: number
+  /** Descripcion escrita por el usuario en la biblioteca de ejercicios. */
+  descripcion?: string
   onSaveSet: (
     entry: ExerciseEntry,
     data: { weight?: number; reps?: number; rir?: number; isWarmup?: boolean; notes?: string },
@@ -509,6 +523,13 @@ function ExerciseCard({
         ) : (
           <div className="no-history">Sin referencia previa: apunta el peso para poder comparar.</div>
         )}
+
+        {/* Descripción del ejercicio: lo que el usuario escribió en la biblioteca. */}
+        {descripcion ? (
+          <div className="exercise-note">
+            <b>Cómo se hace:</b> {descripcion}
+          </div>
+        ) : null}
 
         {suggestion ? (
           <div className="suggestion">
