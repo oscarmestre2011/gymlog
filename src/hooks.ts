@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { db, getSettings } from './db'
 import { DEFAULT_SETTINGS, type Settings } from './types'
+import { duracionDelAviso, patronDeVibracion, sonarAviso, type DuracionAviso } from './lib/audio'
 
 /** Lee los ajustes y los mantiene sincronizados con la interfaz. */
 export function useSettings(): [Settings, (patch: Partial<Settings>) => Promise<void>] {
@@ -76,6 +77,8 @@ export interface RestTimer {
   start: (seconds: number) => void
   stop: () => void
   addSeconds: (seconds: number) => void
+  /** El aviso esta sonando ahora mismo (para que la barra lo muestre). */
+  avisoSonando: boolean
 }
 
 /**
@@ -85,7 +88,11 @@ export interface RestTimer {
  * el navegador suspenda la app en segundo plano, que es justo lo que pasa en
  * el gimnasio cuando se apaga la pantalla entre series.
  */
-export function useRestTimer(soundOn: boolean, vibrateOn: boolean): RestTimer {
+export function useRestTimer(
+  soundOn: boolean,
+  vibrateOn: boolean,
+  alertLength: DuracionAviso = 'largo',
+): RestTimer {
   const [endsAt, setEndsAt] = useState<number | null>(() => {
     const raw = localStorage.getItem(REST_KEY)
     const value = raw ? Number(raw) : null
@@ -94,6 +101,7 @@ export function useRestTimer(soundOn: boolean, vibrateOn: boolean): RestTimer {
   const [total, setTotal] = useState<number>(() => Number(localStorage.getItem(REST_TOTAL_KEY)) || 90)
   const [now, setNow] = useState(() => Date.now())
   const firedRef = useRef(false)
+  const [avisoSonando, setAvisoSonando] = useState(false)
 
   useEffect(() => {
     if (endsAt === null) return
@@ -101,51 +109,70 @@ export function useRestTimer(soundOn: boolean, vibrateOn: boolean): RestTimer {
     return () => window.clearInterval(id)
   }, [endsAt])
 
+  /**
+   * Al volver a la app, ponerse al dia.
+   *
+   * Los temporizadores de una pagina se CONGELAN cuando el movil apaga la pantalla: el
+   * intervalo de arriba deja de correr. Sin esto, al encender la pantalla el cronometro
+   * seguia mostrando la hora de hace rato y el aviso no saltaba. Se comprobo en
+   * scripts/test-pantalla-aviso.mjs.
+   */
+  useEffect(() => {
+    if (endsAt === null) return
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') setNow(Date.now())
+    }
+    document.addEventListener('visibilitychange', alVolver)
+    window.addEventListener('focus', alVolver)
+    return () => {
+      document.removeEventListener('visibilitychange', alVolver)
+      window.removeEventListener('focus', alVolver)
+    }
+  }, [endsAt])
+
   const remaining = endsAt ? Math.max(0, Math.ceil((endsAt - now) / 1000)) : 0
   const running = endsAt !== null && remaining > 0
 
-  // Aviso al terminar el descanso.
+  /**
+   * Aviso al terminar el descanso.
+   *
+   * Se lanza tambien al volver a la app si el descanso ya habia terminado mientras estaba
+   * en segundo plano: si el movil apago la pantalla, este efecto no corrio hasta ahora, y
+   * es mejor avisar tarde que no avisar. Va acompanado del aviso en pantalla, porque en
+   * iPhone puede no haber sonido.
+   */
   useEffect(() => {
     if (!endsAt || remaining > 0 || firedRef.current) return
     firedRef.current = true
 
+    const duracion = duracionDelAviso(alertLength)
+    setAvisoSonando(true)
+    window.setTimeout(() => setAvisoSonando(false), duracion + 400)
+
     if (vibrateOn && typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try {
-        navigator.vibrate([200, 100, 200])
+        navigator.vibrate(patronDeVibracion(alertLength))
       } catch {
         /* algunos navegadores lo bloquean sin interaccion previa */
       }
     }
 
     if (soundOn) {
-      try {
-        const Ctx =
-          window.AudioContext ??
-          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-        if (Ctx) {
-          const ctx = new Ctx()
-          const osc = ctx.createOscillator()
-          const gain = ctx.createGain()
-          osc.connect(gain)
-          gain.connect(ctx.destination)
-          osc.frequency.value = 880
-          gain.gain.setValueAtTime(0.0001, ctx.currentTime)
-          gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02)
-          gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.6)
-          osc.start()
-          osc.stop(ctx.currentTime + 0.62)
-          window.setTimeout(() => void ctx.close(), 900)
-        }
-      } catch {
-        /* sin audio: no es critico */
-      }
+      // No se espera: el aviso suena mientras la interfaz sigue funcionando.
+      void sonarAviso(alertLength)
     }
-  }, [remaining, endsAt, soundOn, vibrateOn])
+  }, [remaining, endsAt, soundOn, vibrateOn, alertLength])
+
+  // El aviso se reinicia cuando se vuelve a arrancar el cronometro.
+  useEffect(() => {
+    if (running) setAvisoSonando(false)
+  }, [running])
 
   const start = useCallback((seconds: number) => {
     if (seconds <= 0) return
     const end = Date.now() + seconds * 1000
     firedRef.current = false
+    setAvisoSonando(false)
     localStorage.setItem(REST_KEY, String(end))
     localStorage.setItem(REST_TOTAL_KEY, String(seconds))
     setTotal(seconds)
@@ -156,6 +183,7 @@ export function useRestTimer(soundOn: boolean, vibrateOn: boolean): RestTimer {
   const stop = useCallback(() => {
     localStorage.removeItem(REST_KEY)
     firedRef.current = false
+    setAvisoSonando(false)
     setEndsAt(null)
   }, [])
 
@@ -166,10 +194,13 @@ export function useRestTimer(soundOn: boolean, vibrateOn: boolean): RestTimer {
       localStorage.setItem(REST_KEY, String(end))
       return end
     })
+    // Si se alarga el descanso, el aviso deja de tener sentido.
+    firedRef.current = false
+    setAvisoSonando(false)
   }, [])
 
   return useMemo(
-    () => ({ endsAt, remaining, total, running, start, stop, addSeconds }),
-    [endsAt, remaining, total, running, start, stop, addSeconds],
+    () => ({ endsAt, remaining, total, running, start, stop, addSeconds, avisoSonando }),
+    [endsAt, remaining, total, running, start, stop, addSeconds, avisoSonando],
   )
 }

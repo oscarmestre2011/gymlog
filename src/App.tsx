@@ -14,6 +14,8 @@ import {
 import type { ExerciseSet, Routine, Session, Settings } from './types'
 import { DEFAULT_SETTINGS } from './types'
 import { useRestTimer } from './hooks'
+import { useWakeLock } from './hooks/useWakeLock'
+import { desbloquearAudio } from './lib/audio'
 import { HomeScreen } from './screens/HomeScreen'
 import { WelcomeScreen } from './screens/WelcomeScreen'
 import { SessionScreen } from './screens/SessionScreen'
@@ -81,7 +83,35 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
    */
   const [verBienvenida, setVerBienvenida] = useState(false)
 
-  const rest = useRestTimer(settings.soundOn, settings.vibrateOn)
+  const rest = useRestTimer(settings.soundOn, settings.vibrateOn, settings.alertLength)
+  /**
+   * Mantiene la pantalla encendida mientras la app esta en uso.
+   *
+   * Si el movil apaga la pantalla, el navegador suspende la pagina y el aviso del descanso
+   * no suena hasta volver a encenderla: es lo que le pasaba al usuario. Con esto, no se
+   * apaga mientras esta usando la app.
+   */
+  const pantalla = useWakeLock(settings.keepScreenOn)
+
+  /* ------------------------- desbloquear el audio ------------------------ */
+  /**
+   * El audio del navegador nace bloqueado hasta que el usuario toca la pantalla. Se
+   * desbloquea en el primer toque, para que despues el aviso del descanso pueda sonar
+   * aunque hayan pasado minutos.
+   */
+  useEffect(() => {
+    const desbloquear = () => {
+      void desbloquearAudio()
+      window.removeEventListener('pointerdown', desbloquear)
+      window.removeEventListener('keydown', desbloquear)
+    }
+    window.addEventListener('pointerdown', desbloquear)
+    window.addEventListener('keydown', desbloquear)
+    return () => {
+      window.removeEventListener('pointerdown', desbloquear)
+      window.removeEventListener('keydown', desbloquear)
+    }
+  }, [])
 
   /* --------------------------- version nueva ---------------------------- */
   // El service worker avisa cuando hay una version nueva descargada. Se ofrece
@@ -216,6 +246,21 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
     notify('Sesión descartada')
   }, [session, rest, notify])
 
+  /**
+   * Guarda los ajustes en la base de datos Y en el estado de la app.
+   *
+   * Hace falta lo segundo: si solo se guardaran, el resto de la app (el cronometro, el
+   * bloqueo de pantalla, la duracion del aviso) seguiria usando los valores antiguos hasta
+   * recargar. Se detecto con la opcion de mantener la pantalla encendida.
+   */
+  const guardarAjustes = useCallback(
+    async (patch: Partial<Settings>) => {
+      await saveSettings(patch)
+      setSettings((actuales) => ({ ...actuales, ...patch }))
+    },
+    [],
+  )
+
   /* -------------------------------- render ------------------------------- */
 
   // Arranque fallido: se explica el motivo en lugar de dejar la pantalla oscura.
@@ -304,6 +349,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
       ) : tab === 'inicio' ? (
         <HomeScreen
           key={`inicio-${refreshKey}`}
+          settings={settings}
           onStart={handleStart}
           onOpenSession={async (id) => {
             const found = await getSession(id)
@@ -332,7 +378,13 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
           ) : tab === 'cardio' ? (
             <CardioScreen notify={notify} />
           ) : (
-            <SettingsScreen settings={settings} onSave={saveSettings} notify={notify} />
+            <SettingsScreen
+            settings={settings}
+            onSave={guardarAjustes}
+            notify={notify}
+            estadoPantalla={pantalla.estado}
+            reintentarPantalla={pantalla.reintentar}
+          />
           )}
         </>
       )}
@@ -341,6 +393,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
         <RestBar
           remaining={rest.remaining}
           total={rest.total}
+          avisoSonando={rest.avisoSonando}
           onAdd={(s) => rest.addSeconds(s)}
           onStop={rest.stop}
         />

@@ -31,6 +31,17 @@ export class GymLogDB extends Dexie {
       cardio: 'id, date, sessionId, activity',
       settings: 'id',
     })
+    // Version 2: se anaden ajustes nuevos (pantalla encendida y duracion del aviso).
+    // La estructura no cambia; los ajustes ya guardados se completan solos al leerlos,
+    // mezclando lo que hay con los valores por defecto (ver getSettings).
+    this.version(2).stores({
+      exercises: 'id, name, group, favorite',
+      routines: 'id, name, updatedAt',
+      sessions: 'id, date, startedAt, routineId',
+      sets: 'id, sessionId, exerciseId, completedAt, [exerciseId+completedAt]',
+      cardio: 'id, date, sessionId, activity',
+      settings: 'id',
+    })
   }
 }
 

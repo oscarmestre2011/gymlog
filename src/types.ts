@@ -162,6 +162,16 @@ export interface Settings {
    * Los datos viven solo en el movil, asi que este aviso es la unica proteccion.
    */
   backupReminderDays: number
+  /**
+   * Mantener la pantalla encendida mientras se usa la app.
+   *
+   * Pedido por el usuario: si el movil apaga la pantalla, el navegador suspende la pagina
+   * y el aviso del descanso no suena hasta que se enciende otra vez. Manteniendo la
+   * pantalla encendida no se pierde ningun aviso. Se puede desactivar: gasta bateria.
+   */
+  keepScreenOn: boolean
+  /** Duracion del aviso del descanso: 'corto' (un pitido), 'largo' o 'muy-largo'. */
+  alertLength: 'corto' | 'largo' | 'muy-largo'
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -173,6 +183,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoBackupWeeks: 0,
   hasSeenWelcome: false,
   backupReminderDays: 7,
+  keepScreenOn: true,
+  alertLength: 'largo',
 }
 
 /** Formato de fichero de copia de seguridad. */

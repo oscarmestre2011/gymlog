@@ -469,6 +469,16 @@ select.input {
   line-height: 1;
 }
 
+/* Mientras suena el aviso, la barra parpadea mas rapido y el texto se agranda: en un
+   gimnasio con musica, el aviso tiene que verse aunque no se oiga. */
+.rest-bar.sonando {
+  animation: rest-flash 0.4s ease-in-out infinite;
+}
+
+.rest-bar.sonando .rest-done-text {
+  font-size: 1.12rem;
+}
+
 @keyframes rest-flash {
   0%,
   100% {

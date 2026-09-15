@@ -12,11 +12,14 @@ import { formatClock } from '../lib/format'
 export function RestBar({
   remaining,
   total,
+  avisoSonando = false,
   onAdd,
   onStop,
 }: {
   remaining: number
   total: number
+  /** El aviso esta sonando ahora: la barra lo refleja. */
+  avisoSonando?: boolean
   onAdd: (seconds: number) => void
   onStop: () => void
 }) {
@@ -24,7 +27,11 @@ export function RestBar({
   const progress = total > 0 ? Math.max(0, Math.min(100, ((total - remaining) / total) * 100)) : 100
 
   return (
-    <div className={`rest-bar${done ? ' done' : ''}`} role="status" aria-live="polite">
+    <div
+      className={`rest-bar${done ? ' done' : ''}${avisoSonando ? ' sonando' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
       <div className="clock">{done ? '¡Ya!' : formatClock(remaining)}</div>
       <div className="rest-info">
         {done ? <div className="rest-done-text">¡Descanso terminado!</div> : null}

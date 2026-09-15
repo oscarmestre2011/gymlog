@@ -12,6 +12,8 @@ import { db } from '../db'
 import { seedIfEmpty } from '../db/seed'
 import { ConfirmDialog } from '../components/Modal'
 import { descargarArchivo, descargarCopiaDeSeguridad } from '../lib/descargar'
+import { audioDisponible, duracionDelAviso } from '../lib/audio'
+import type { EstadoPantalla } from '../hooks/useWakeLock'
 import { KairosMark } from '../components/KairosMark'
 import { exerciseSummary } from '../lib/format'
 import { progressionToMarkdown, sessionsToMarkdown } from '../lib/markdown'
@@ -20,10 +22,15 @@ export function SettingsScreen({
   settings,
   onSave,
   notify,
+  estadoPantalla = 'inactivo',
+  reintentarPantalla,
 }: {
   settings: Settings
   onSave: (patch: Partial<Settings>) => Promise<void>
   notify: (message: string) => void
+  /** Si la pantalla se esta manteniendo encendida o por que no. */
+  estadoPantalla?: EstadoPantalla
+  reintentarPantalla?: () => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [pendingImport, setPendingImport] = useState<BackupFile | null>(null)
@@ -160,6 +167,65 @@ export function SettingsScreen({
           checked={settings.vibrateOn}
           onChange={(v) => void onSave({ vibrateOn: v })}
         />
+
+        {/* Duracion del aviso: el usuario pidio que fuera mas largo. */}
+        <div className="field" style={{ marginTop: 14 }}>
+          <label>Duración del aviso</label>
+          <div className="row wrap" style={{ gap: 6 }}>
+            {(
+              [
+                { valor: 'corto', texto: 'Corto' },
+                { valor: 'largo', texto: 'Largo' },
+                { valor: 'muy-largo', texto: 'Muy largo' },
+              ] as const
+            ).map((opcion) => (
+              <button
+                key={opcion.valor}
+                className={`chip${(settings.alertLength ?? 'largo') === opcion.valor ? ' active' : ''}`}
+                onClick={() => void onSave({ alertLength: opcion.valor })}
+              >
+                {opcion.texto}
+              </button>
+            ))}
+          </div>
+          <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+            El aviso sonoro dura unos {(duracionDelAviso(settings.alertLength ?? 'largo') / 1000).toFixed(1)} s
+            {audioDisponible() ? '' : ' (este navegador no permite sonidos: se verá en pantalla)'}.
+          </p>
+        </div>
+      </div>
+
+      {/* ------------------------------- pantalla ------------------------------ */}
+      <div className="card">
+        <h2 className="card-title">Pantalla</h2>
+        <Toggle
+          label="Mantener la pantalla encendida mientras uso la app"
+          hint="Si el móvil apaga la pantalla, el navegador duerme la app y el aviso del descanso no suena hasta que vuelvas a encenderla. Con esto no se apaga. Gasta más batería."
+          checked={settings.keepScreenOn}
+          onChange={(v) => void onSave({ keepScreenOn: v })}
+        />
+        <div className="kv" style={{ marginTop: 8 }}>
+          <span className="k">Estado</span>
+          <span className="v">
+            {estadoPantalla === 'activo'
+              ? '✅ mantenida encendida'
+              : estadoPantalla === 'no-disponible'
+                ? 'este navegador no lo permite'
+                : estadoPantalla === 'denegado'
+                  ? 'el navegador lo ha denegado'
+                  : 'en pausa (app en segundo plano)'}
+          </span>
+        </div>
+        {estadoPantalla === 'denegado' && reintentarPantalla ? (
+          <button className="btn block" style={{ marginTop: 8 }} onClick={reintentarPantalla}>
+            Volver a intentarlo
+          </button>
+        ) : null}
+        <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
+          Si el móvil apaga la pantalla de todas formas (porque tú lo bloqueas), la app no puede
+          evitarlo: en ese momento el navegador la duerme. Al volver a encenderla, el cronómetro se
+          pone al día y el aviso suena en ese momento.
+        </p>
       </div>
 
       {/* -------------------------------- copia -------------------------------- */}
@@ -288,7 +354,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.0.13</span>
+          <span className="v">1.0.14</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

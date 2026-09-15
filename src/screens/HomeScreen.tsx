@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { Routine } from '../types'
+import type { Routine, Settings } from '../types'
 import {
   deleteSession,
   getActiveSession,
@@ -10,7 +10,6 @@ import {
   listSets,
 } from '../db/repository'
 import { useQuery } from '../hooks'
-import { useSettings } from '../hooks'
 import { descargarCopiaDeSeguridad } from '../lib/descargar'
 import { BackupReminder } from '../components/BackupReminder'
 import { ConfirmDialog } from '../components/Modal'
@@ -30,17 +29,19 @@ import type { Tab } from '../App'
 const ROUTINE_WEEKDAY: Record<string, number> = { A: 1, B: 3, C: 5 }
 
 export function HomeScreen({
+  settings,
   onStart,
   onOpenSession,
   onGoTo,
   notify,
 }: {
+  /** Ajustes actuales, gestionados por la app para que un cambio se refleje al momento. */
+  settings: Settings
   onStart: (routine?: Routine, date?: string) => Promise<void>
   onOpenSession: (id: string) => Promise<void>
   onGoTo: (tab: Tab) => void
   notify: (message: string) => void
 }) {
-  const [settings] = useSettings()
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
