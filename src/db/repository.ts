@@ -514,6 +514,46 @@ export async function deleteCardio(id: string): Promise<void> {
   await db.cardio.delete(id)
 }
 
+/**
+ * Mueve las series de un ejercicio a otro dentro de la misma sesion.
+ *
+ * Se usa al SUSTITUIR un ejercicio durante el entrenamiento. Las series no se borran: pasan al
+ * ejercicio nuevo y se quedan marcadas con el nombre anterior, porque lo que se apunto con el
+ * ejercicio de antes no es el de ahora.
+ *
+ * Se numeran DESPUES de las que ya tuviera el ejercicio nuevo, para que la numeracion sea
+ * correlativa y no haya dos series con el mismo numero.
+ */
+export async function moveSetsToExercise(
+  sessionId: string,
+  ejercicioViejo: string,
+  ejercicioNuevo: string,
+  nota?: string,
+): Promise<number> {
+  const deLaSesion = await db.sets.where('sessionId').equals(sessionId).toArray()
+  const afectadas = deLaSesion
+    .filter((s) => s.exerciseId === ejercicioViejo)
+    .sort((a, b) => a.setNumber - b.setNumber || a.completedAt - b.completedAt)
+  if (afectadas.length === 0) return 0
+
+  const yaEnElNuevo = deLaSesion.filter((s) => s.exerciseId === ejercicioNuevo).length
+
+  await db.transaction('rw', db.sets, async () => {
+    for (let i = 0; i < afectadas.length; i += 1) {
+      const serie = afectadas[i]
+      await db.sets.put({
+        ...serie,
+        exerciseId: ejercicioNuevo,
+        // El nombre ANTERIOR se conserva: es lo que se estaba haciendo cuando se apunto.
+        setNumber: yaEnElNuevo + i + 1,
+        notes: [serie.notes, nota].filter(Boolean).join(' · ') || undefined,
+      })
+    }
+  })
+
+  return afectadas.length
+}
+
 /* ------------------------------------------------------------------ */
 /* Medidas corporales                                                  */
 /* ------------------------------------------------------------------ */

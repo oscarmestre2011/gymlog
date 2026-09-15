@@ -112,6 +112,94 @@ export function etiquetaDeSuperserie(letra: string, posicion: number): string {
 }
 
 /**
+ * Sustituye un ejercicio de la sesion por otro.
+ *
+ * Se usa cuando en el gimnasio la maquina esta ocupada, o el ejercicio no va bien y se cambia
+ * sobre la marcha. Casos que tiene que resolver bien:
+ *
+ * - **No se pierde nada de lo apuntado.** Las series ya registradas se quedan donde estaban, con
+ *   el ejercicio anterior y su nombre. Lo unico que cambia es el ejercicio que se sigue a partir
+ *   de ahora. Si el usuario quiere borrarlas, las borra a mano: nunca se borra por su cuenta.
+ * - **Se conserva el hueco en la rutina**: series, repeticiones, descanso y si va dentro de una
+ *   superserie. Al cambiar de ejercicio no tiene por que cambiar el plan.
+ * - **Se anota de donde viene**, para entender despues por que hay series de dos ejercicios
+ *   distintos en la misma sesion.
+ */
+export function sustituirEjercicio(
+  ejercicios: RoutineExercise[],
+  exerciseIdViejo: string,
+  nuevo: { exerciseId: string; name: string },
+): RoutineExercise[] {
+  const anterior = ejercicios.find((e) => e.exerciseId === exerciseIdViejo)
+  return ejercicios.map((e) =>
+    e.exerciseId === exerciseIdViejo
+      ? {
+          ...e,
+          exerciseId: nuevo.exerciseId,
+          name: nuevo.name,
+          // Solo se anota si de verdad es otro ejercicio.
+          notes: anotarCambio(e.notes, anterior?.name, nuevo.name),
+        }
+      : e,
+  )
+}
+
+/**
+ * Anade "Cambiado desde X" a las notas del ejercicio.
+ *
+ * Si ya habia una marca de un cambio anterior, se SUSTITUYE en lugar de acumularse: encadenar
+ * tres cambios dejaba la nota como "Cambiado desde A · Cambiado desde B · Cambiado desde C", que
+ * no se lee. Solo interesa de donde viene ahora.
+ */
+function anotarCambio(
+  notas: string | undefined,
+  nombreViejo: string | undefined,
+  nombreNuevo: string,
+): string | undefined {
+  const marca = marcaDeCambio(nombreViejo ?? '', nombreNuevo)
+  if (!marca) return notas
+  // Se quita cualquier marca anterior y se deja la nueva al final.
+  const sinMarcas = notas?.replace(/\s*·?\s*Cambiado desde [^·]+/g, '').trim()
+  return sinMarcas ? `${sinMarcas} · ${marca}` : marca
+}
+
+/**
+ * Texto que se anade a las series nuevas cuando se ha cambiado de ejercicio.
+ * Las series anteriores se quedan con el nombre del ejercicio que se estaba haciendo.
+ */
+export function marcaDeCambio(nombreViejo: string, nombreNuevo: string): string | undefined {
+  if (!nombreViejo || nombreViejo === nombreNuevo) return undefined
+  return `Cambiado desde ${nombreViejo}`
+}
+
+/** Dos nombres son el mismo ejercicio (sin distinguir mayusculas ni espacios de mas). */
+export function mismoEjercicio(a: string, b: string): boolean {
+  const limpiar = (texto: string) => texto.trim().toLowerCase().replace(/\s+/g, ' ')
+  return limpiar(a) === limpiar(b)
+}
+
+/**
+ * Si un ejercicio se puede poner en la sesion sin repetirlo.
+ *
+ * Hace falta comprobar las DOS cosas: el identificador y el nombre.
+ *
+ * - El identificador se compara porque es lo que identifica al ejercicio de verdad.
+ * - El nombre se compara ADEMAS porque es lo que ve el usuario: si en la sesion ya hay un
+ *   "Remo con barra", poner otro "Remo con barra" (aunque venga con otro identificador, por
+ *   ejemplo de una rutina antigua o de una copia restaurada) deja dos tarjetas iguales y el
+ *   usuario no entiende por que. Se descubrio con una prueba: al sustituir un ejercicio por otro
+ *   que ya estaba, la sesion acababa con dos ejercicios repetidos.
+ */
+export function sePuedeAnadir(
+  ejercicios: RoutineExercise[],
+  candidato: { exerciseId: string; name: string },
+): boolean {
+  return !ejercicios.some(
+    (e) => e.exerciseId === candidato.exerciseId || mismoEjercicio(e.name, candidato.name),
+  )
+}
+
+/**
  * Texto que acompana al cronometro para explicar para que es ese descanso.
  * Devolver null cuando no hay nada que explicar (ejercicio suelto) evita ruido en la barra.
  */

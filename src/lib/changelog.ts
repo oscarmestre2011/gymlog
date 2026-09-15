@@ -37,6 +37,17 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.2.0',
+    fecha: '2026-09-16',
+    titulo: 'Ejercicios plegables y cambio de ejercicio',
+    cambios: [
+      { tipo: 'nuevo', texto: 'Los ejercicios ya terminados se pliegan solos, para no tener que bajar por toda la sesión. Se pueden volver a abrir para apuntar una serie de más.' },
+      { tipo: 'nuevo', texto: 'Puedes cambiar un ejercicio por otro en mitad del entrenamiento (por ejemplo si la máquina está ocupada), con el botón ⇄ de cada ejercicio.' },
+      { tipo: 'mejora', texto: 'Al cambiar de ejercicio NO se pierde nada: las series apuntadas se quedan y se marcan como «Cambiado desde X», para entender después por qué hay series de dos ejercicios.' },
+      { tipo: 'arreglo', texto: 'Ya no se pueden poner dos veces el mismo ejercicio en una sesión: los que ya están salen marcados como «ya en la sesión».' },
+    ],
+  },
+  {
     version: '1.1.1',
     fecha: '2026-09-16',
     titulo: 'Arreglada la copia en carpeta',

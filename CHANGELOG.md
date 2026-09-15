@@ -3,6 +3,15 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.2.0 — Ejercicios plegables y cambio de ejercicio
+
+_2026-09-16_
+
+- **Nuevo:** Los ejercicios ya terminados se pliegan solos, para no tener que bajar por toda la sesión. Se pueden volver a abrir para apuntar una serie de más.
+- **Nuevo:** Puedes cambiar un ejercicio por otro en mitad del entrenamiento (por ejemplo si la máquina está ocupada), con el botón ⇄ de cada ejercicio.
+- **Mejorado:** Al cambiar de ejercicio NO se pierde nada: las series apuntadas se quedan y se marcan como «Cambiado desde X», para entender después por qué hay series de dos ejercicios.
+- **Arreglado:** Ya no se pueden poner dos veces el mismo ejercicio en una sesión: los que ya están salen marcados como «ya en la sesión».
+
 ## 1.1.1 — Arreglada la copia en carpeta
 
 _2026-09-16_

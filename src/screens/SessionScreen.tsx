@@ -6,6 +6,7 @@ import {
   getLastSetsForExercise,
   getSettings,
   listExercises,
+  moveSetsToExercise,
   renumberSets,
   updateSession,
   updateSet,
@@ -20,9 +21,12 @@ import {
   etiquetaDeDescanso,
   etiquetaDeSuperserie,
   groupRoutineExercises,
+  marcaDeCambio,
+  sePuedeAnadir,
   resumenEnSuperserie,
   letraDeGrupo,
   resumenDeSuperserie,
+  sustituirEjercicio,
 } from '../lib/supersets'
 import { ExercisePicker, summarizeSets } from '../components/ExercisePicker'
 import { NumberInput, targetLabel, targetSummary } from '../components/NumberInput'
@@ -86,6 +90,8 @@ export function SessionScreen({
 }) {
   const [entries, setEntries] = useState<ExerciseEntry[]>(() => session.routineSnapshot.map(toEntry))
   const [openNote, setOpenNote] = useState<string | null>(null)
+  /** Ejercicio que se esta sustituyendo por otro (null si no hay ninguno). */
+  const [sustituyendo, setSustituyendo] = useState<ExerciseEntry | null>(null)
   const [comment, setComment] = useState(session.metrics.notes ?? '')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [confirmFinish, setConfirmFinish] = useState(false)
@@ -346,6 +352,48 @@ export function SessionScreen({
     notify(`${entry.name} quitado de la sesión`)
   }
 
+  /**
+   * Sustituye un ejercicio de la sesion por otro, sin salir del entrenamiento.
+   *
+   * Pasa en cualquier gimnasio: la maquina esta ocupada, o el ejercicio no va bien ese dia.
+   *
+   * Lo que NO hace, a proposito: borrar las series ya apuntadas. Se quedan donde estan, con el
+   * ejercicio anterior y su nombre, porque no se borra el trabajo del usuario por un toque. Si
+   * quiere quitarlas, las borra a mano. Las series nuevas se marcan con "Cambiado desde X" para
+   * que despues se entienda por que hay series de dos ejercicios distintos.
+   */
+  const handleSwapExercise = async (viejo: ExerciseEntry, nuevo: { exerciseId: string; name: string }) => {
+    /*
+     * No se puede cambiar a un ejercicio que YA esta en la sesion: quedarian dos tarjetas
+     * iguales y el usuario no sabria cual es cual. Se comprueba por identificador y por nombre,
+     * porque dos ejercicios distintos pueden llamarse igual (por ejemplo uno de una rutina
+     * antigua y otro de la biblioteca).
+     */
+    const otros = entries.filter((e) => e.exerciseId !== viejo.exerciseId)
+    if (!sePuedeAnadir(otros, nuevo)) {
+      notify(`«${nuevo.name}» ya está en esta sesión: elige otro ejercicio`)
+      return
+    }
+
+    const seriesDelViejo = byExercise.get(viejo.exerciseId) ?? []
+    const seriesDelNuevo = byExercise.get(nuevo.exerciseId) ?? []
+    const marca = marcaDeCambio(viejo.name, nuevo.name)
+
+    await persistEntries(sustituirEjercicio(entries, viejo.exerciseId, nuevo))
+    await moveSetsToExercise(session.id, viejo.exerciseId, nuevo.exerciseId, marca)
+    await onChanged()
+
+    const aviso =
+      seriesDelViejo.length > 0
+        ? `${viejo.name} → ${nuevo.name}. Las ${seriesDelViejo.length} series suyas se quedan en el historial`
+        : `${viejo.name} → ${nuevo.name}`
+    notify(
+      seriesDelNuevo.length > 0
+        ? `${viejo.name} → ${nuevo.name}. Ya tenía ${seriesDelNuevo.length} series apuntadas antes`
+        : aviso,
+    )
+  }
+
   const handleFinish = async () => {
     setConfirmFinish(false)
     await updateSession(session.id, {
@@ -423,6 +471,7 @@ export function SessionScreen({
             onRepeat={handleRepeat}
             onDeleteSet={handleDeleteSet}
             onRemoveExercise={() => void handleRemoveExercise(entry)}
+            onSwapExercise={() => setSustituyendo(entry)}
             onChangeTargets={(patch) =>
               void persistEntries(entries.map((e) => (e.exerciseId === entry.exerciseId ? { ...e, ...patch } : e)))
             }
@@ -508,6 +557,22 @@ export function SessionScreen({
       </div>
 
       {/* ------------------------------- modales ----------------------------- */}
+      {/* Selector para cambiar un ejercicio por otro sin salir del entrenamiento. */}
+      {sustituyendo ? (
+        <ExercisePicker
+          title={`Cambiar ${sustituyendo.name}`}
+          subtitle="Elige el ejercicio que vas a hacer en su lugar"
+          usedIds={entries.filter((e) => e.exerciseId !== sustituyendo.exerciseId).map((e) => e.exerciseId)}
+          usedNames={entries.filter((e) => e.exerciseId !== sustituyendo.exerciseId).map((e) => e.name)}
+          onPick={(exerciseId, name) => {
+            const viejo = sustituyendo
+            setSustituyendo(null)
+            void handleSwapExercise(viejo, { exerciseId, name })
+          }}
+          onClose={() => setSustituyendo(null)}
+        />
+      ) : null}
+
       {pickerOpen ? (
         <ExercisePicker
           usedIds={orderedEntries.map((e) => e.exerciseId)}
@@ -555,6 +620,7 @@ function ExerciseCard({
   onRepeat,
   onDeleteSet,
   onRemoveExercise,
+  onSwapExercise,
   onChangeTargets,
   noteOpen,
   onToggleNote,
@@ -583,6 +649,8 @@ function ExerciseCard({
   onRepeat: (set: ExerciseSet) => Promise<void>
   onDeleteSet: (entry: ExerciseEntry, set: ExerciseSet) => Promise<void>
   onRemoveExercise: () => void
+  /** Cambiar este ejercicio por otro en mitad del entrenamiento. */
+  onSwapExercise: () => void
   onChangeTargets: (patch: Partial<ExerciseEntry>) => void
   noteOpen: boolean
   onToggleNote: () => void
@@ -598,8 +666,23 @@ function ExerciseCard({
   const doneCount = sets.length
   const targetReached = doneCount >= entry.targetSets
 
+  /**
+   * Plegar el ejercicio cuando ya esta hecho.
+   *
+   * Pedido por el usuario: al entrenar, las tarjetas de los ejercicios terminados ocupan sitio y
+   * obligan a bajar. Se recoge sola al llegar a las series previstas, y se puede volver a abrir
+   * (por ejemplo para apuntar una serie de mas o cambiar el peso).
+   */
+  const [plegado, setPlegado] = useState(false)
+  const plegadoAntes = useRef(targetReached)
+  useEffect(() => {
+    // Solo se pliega sola AL TERMINAR: si el usuario la abre, no se vuelve a cerrar sola.
+    if (targetReached && !plegadoAntes.current) setPlegado(true)
+    plegadoAntes.current = targetReached
+  }, [targetReached])
+
   return (
-    <div className={`exercise-card${claseExtra ? ` ${claseExtra}` : ''}`}>
+    <div className={`exercise-card${claseExtra ? ` ${claseExtra}` : ''}${plegado ? ' plegado' : ''}`}>
       <div className="exercise-head">
         <div className="grow">
           <div className="name">
@@ -612,6 +695,19 @@ function ExerciseCard({
           </div>
         </div>
         {targetReached ? <span className="badge live">✓</span> : null}
+        {/* Plegar o desplegar: con los ejercicios ya hechos, la sesion se hace larguisima. */}
+        <button
+          className="icon-btn"
+          onClick={() => setPlegado((v) => !v)}
+          aria-label={plegado ? `Abrir ${entry.name}` : `Cerrar ${entry.name}`}
+          aria-expanded={!plegado}
+        >
+          {plegado ? '▾' : '▴'}
+        </button>
+        {/* Cambiar este ejercicio por otro sin salir del entrenamiento. */}
+        <button className="icon-btn" onClick={onSwapExercise} aria-label={`Cambiar ${entry.name} por otro`}>
+          ⇄
+        </button>
         <button className="icon-btn" onClick={onToggleNote} aria-label="Notas del ejercicio">
           {entry.notes ? '📝' : '＋'}
         </button>
@@ -620,7 +716,17 @@ function ExerciseCard({
         </button>
       </div>
 
-      <div className="exercise-body">
+      {plegado ? (
+        <div className="exercise-plegado">
+          <span className="tiny muted">
+            {doneCount === 0
+              ? 'Sin series apuntadas'
+              : `Hechas ${doneCount}/${entry.targetSets}${sets.length > 0 ? ` · ${exerciseSummary(sets)}` : ''}`}
+          </span>
+        </div>
+      ) : null}
+
+      <div className="exercise-body" hidden={plegado}>
         {previous.length > 0 ? (
           <div className="last-time">
             <b>Última vez:</b> {summarizeSets(previous)}
@@ -772,6 +878,12 @@ function SetRow({
           ✕
         </button>
       </div>
+      {/*
+        Nota de la serie. Aqui aparece, por ejemplo, "Cambiado desde X" cuando se ha sustituido
+        el ejercicio: sin mostrarla, la marca se guardaba pero el usuario no veia por que habia
+        series de dos ejercicios distintos en la misma sesion.
+      */}
+      {set.notes ? <div className="set-note">{set.notes}</div> : null}
     </div>
   )
 }

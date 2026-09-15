@@ -393,6 +393,15 @@ select.input {
   padding: 3px 0;
 }
 
+/* Nota de la serie, debajo y ocupando todo el ancho (por ejemplo "Cambiado desde X"). */
+.set-note {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  color: var(--warn);
+  padding: 1px 0 3px;
+  font-style: italic;
+}
+
 .set-row .idx {
   text-align: center;
   color: var(--text-dim);
@@ -633,6 +642,27 @@ select.input {
 
 .warn {
   color: var(--warn);
+}
+
+/* ----------------------- ejercicios plegados ---------------------------- */
+
+/* Un ejercicio ya terminado se recoge: al entrenar, la lista se hace larguisima y hay que bajar
+   mucho para llegar al siguiente. El resumen se queda a la vista. */
+.exercise-card.plegado .exercise-head {
+  margin-bottom: 0;
+}
+
+.exercise-card.plegado {
+  opacity: 0.75;
+}
+
+.exercise-plegado {
+  padding: 2px 0 0;
+}
+
+/* El cuerpo se oculta con el atributo hidden: asi el contenido no se lee ni se tabula. */
+.exercise-body[hidden] {
+  display: none;
 }
 
 /* ------------------------------ superseries ------------------------------ */

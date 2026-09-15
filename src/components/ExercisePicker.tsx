@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ExerciseSet, MuscleGroup } from '../types'
+import type { ExerciseSet, MuscleGroup, Exercise } from '../types'
 import { listExercises } from '../db/repository'
 import { useQuery } from '../hooks'
 import { Modal } from './Modal'
@@ -25,6 +25,9 @@ export function ExercisePicker({
   onCreate,
   onEdit,
   usedIds = [],
+  usedNames = [],
+  title = 'Añadir ejercicio',
+  subtitle,
 }: {
   onPick: (exerciseId: string, name: string) => void
   onClose: () => void
@@ -32,6 +35,11 @@ export function ExercisePicker({
   /** Avisa de donde se editan los ejercicios (la biblioteca). */
   onEdit?: () => void
   usedIds?: string[]
+  /** Nombres que ya estan en la sesion: no se ofrecen, para no repetir ejercicios. */
+  usedNames?: string[]
+  /** Titulo propio: al sustituir un ejercicio se dice cual se esta cambiando. */
+  title?: string
+  subtitle?: string
 }) {
   const [query, setQuery] = useState('')
   const [group, setGroup] = useState<MuscleGroup | 'Todos' | 'Frecuentes'>('Frecuentes')
@@ -61,6 +69,17 @@ export function ExercisePicker({
     return pool.filter((e) => normalize(e.name).includes(normalized)).slice(0, 80)
   }, [exercises, group, query, usedIds])
 
+  /**
+   * Se marcan los que ya estan en la sesion, para que se vea antes de elegirlos.
+   *
+   * Se compara por identificador Y por nombre: dos ejercicios distintos pueden llamarse igual (uno
+   * de una rutina antigua y otro de la biblioteca), y en la sesion eso deja dos tarjetas iguales.
+   * Al sustituir un ejercicio, elegir uno repetido no tiene sentido, asi que se avisa aqui.
+   */
+  const yaEnLaSesion = (ejercicio: Exercise) =>
+    usedIds.includes(ejercicio.id) ||
+    usedNames.some((n) => n.trim().toLowerCase().replace(/\s+/g, ' ') === ejercicio.name.trim().toLowerCase().replace(/\s+/g, ' '))
+
   const exactExists = useMemo(() => {
     const normalized = normalize(query)
     if (!normalized) return true
@@ -68,7 +87,7 @@ export function ExercisePicker({
   }, [exercises, query])
 
   return (
-    <Modal title="Añadir ejercicio" onClose={onClose}>
+    <Modal title={title} subtitle={subtitle} onClose={onClose}>
       <input
         className="input"
         placeholder="Buscar: press, squat, jalón…"
@@ -113,28 +132,39 @@ export function ExercisePicker({
         </div>
       ) : (
         <div className="list" style={{ marginTop: 8, maxHeight: '46dvh', overflowY: 'auto' }}>
-          {filtered.map((exercise) => (
-            <button
-              key={exercise.id}
-              className="list-item"
-              style={{
-                background: 'transparent',
-                border: 0,
-                borderBottom: '1px solid var(--border)',
-                textAlign: 'left',
-                width: '100%',
-              }}
-              onClick={() => onPick(exercise.id, exercise.name)}
-            >
-              <div className="main">
-                <div className="title">
-                  {exercise.name}
-                  {exercise.custom ? (
-                    <span className="badge" style={{ marginLeft: 8 }}>
-                      mío
-                    </span>
-                  ) : null}
-                </div>
+          {filtered.map((exercise) => {
+            const repetido = yaEnLaSesion(exercise)
+            return (
+              <button
+                key={exercise.id}
+                className="list-item"
+                style={{
+                  background: 'transparent',
+                  border: 0,
+                  borderBottom: '1px solid var(--border)',
+                  textAlign: 'left',
+                  width: '100%',
+                  opacity: repetido ? 0.45 : 1,
+                }}
+                // Un ejercicio que ya esta en la sesion no se puede volver a poner: dejaria dos
+                // tarjetas iguales.
+                disabled={repetido}
+                onClick={() => onPick(exercise.id, exercise.name)}
+              >
+                <div className="main">
+                  <div className="title">
+                    {exercise.name}
+                    {exercise.custom ? (
+                      <span className="badge" style={{ marginLeft: 8 }}>
+                        mío
+                      </span>
+                    ) : null}
+                    {repetido ? (
+                      <span className="badge" style={{ marginLeft: 8 }} title="Ya está en la sesión">
+                        ya en la sesión
+                      </span>
+                    ) : null}
+                  </div>
                 <div className="meta">
                   {exercise.group} · {exercise.equipment}
                   {exercise.side !== 'bilateral' ? ` · ${exercise.side.replace('-', ' ')}` : ''}
@@ -151,7 +181,8 @@ export function ExercisePicker({
               </div>
               {exercise.favorite ? <span className="badge">★</span> : null}
             </button>
-          ))}
+            )
+          })}
         </div>
       )}
       {onEdit ? (
