@@ -1,5 +1,11 @@
 import { useState } from 'react'
 import type { Routine, RoutineExercise } from '../types'
+import {
+  TRANSICION_POR_DEFECTO,
+  groupRoutineExercises,
+  letraDeGrupo,
+  resumenDeSuperserie,
+} from '../lib/supersets'
 import { deleteRoutine, duplicateRoutine, listRoutines, saveRoutine } from '../db/repository'
 import { newId } from '../db'
 import { useQuery } from '../hooks'
@@ -172,6 +178,58 @@ function RoutineEditor({
     }))
   }
 
+  /** Cambia un valor en TODOS los ejercicios de una superserie (descanso, transicion). */
+  const cambiarGrupo = (posiciones: number[], patch: Partial<RoutineExercise>) => {
+    setDraft((d) => ({
+      ...d,
+      exercises: d.exercises.map((e, i) => (posiciones.includes(i) ? { ...e, ...patch } : e)),
+    }))
+  }
+
+  /**
+   * Enlaza el ejercicio de la posicion `index` con el siguiente para formar una superserie.
+   *
+   * Se guarda en cada ejercicio el tamano del grupo ("van 2 juntos"), no un identificador
+   * compartido: asi no hay dos sitios que puedan quedar descuadrados entre si.
+   */
+  const agrupar = (index: number) => {
+    setDraft((d) => {
+      const siguiente = d.exercises[index + 1]
+      const actual = d.exercises[index]
+      if (!siguiente || !actual) return d
+      const yaEraGrupo = actual.kind === 'superset' && (actual.groupSize ?? 1) >= 2
+      const nuevoTamano = (yaEraGrupo ? (actual.groupSize ?? 1) : 1) + 1
+      const transicion =
+        actual.transitionSeconds ?? siguiente.transitionSeconds ?? TRANSICION_POR_DEFECTO
+      return {
+        ...d,
+        exercises: d.exercises.map((e, i) => {
+          if (i === index || i === index + 1) {
+            return { ...e, kind: 'superset' as const, groupSize: nuevoTamano, transitionSeconds: transicion }
+          }
+          return e
+        }),
+      }
+    })
+  }
+
+  /** Deshace la superserie que empieza en `inicio`: sus ejercicios vuelven a ir sueltos. */
+  const separar = (inicio: number) => {
+    setDraft((d) => {
+      const primero = d.exercises[inicio]
+      const tamano = primero?.groupSize ?? 1
+      return {
+        ...d,
+        exercises: d.exercises.map((e, i) => {
+          if (i >= inicio && i < inicio + tamano) {
+            return { ...e, kind: 'single' as const, groupSize: 1 }
+          }
+          return e
+        }),
+      }
+    })
+  }
+
   const move = (index: number, direction: -1 | 1) => {
     setDraft((d) => {
       const next = [...d.exercises]
@@ -251,73 +309,140 @@ function RoutineEditor({
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {draft.exercises.map((exercise, index) => (
-          <div key={`${exercise.exerciseId}-${index}`} className="card tight" style={{ background: 'var(--bg-elev-2)' }}>
-            <div className="row between" style={{ marginBottom: 8 }}>
-              <div className="grow" style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-                {index + 1}. {exercise.name}
-              </div>
-              <button className="icon-btn" onClick={() => move(index, -1)} aria-label="Subir">
-                ↑
-              </button>
-              <button className="icon-btn" onClick={() => move(index, 1)} aria-label="Bajar">
-                ↓
-              </button>
-              <button
-                className="icon-btn danger"
-                onClick={() =>
-                  setDraft((d) => ({ ...d, exercises: d.exercises.filter((_, i) => i !== index) }))
-                }
-                aria-label="Quitar"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="grid-3">
-              <div className="field">
-                <label>Series</label>
-                <NumberInput
-                  value={exercise.targetSets}
-                  onChange={(v) => patchExercise(index, { targetSets: v ?? 1 })}
-                  integer
-                  ariaLabel={`Series de ${exercise.name}`}
-                />
-              </div>
-              <div className="field">
-                <label>Reps mín</label>
-                <NumberInput
-                  value={exercise.targetRepsMin}
-                  onChange={(v) => patchExercise(index, { targetRepsMin: v ?? 1 })}
-                  integer
-                  ariaLabel={`Reps mínimas de ${exercise.name}`}
-                />
-              </div>
-              <div className="field">
-                <label>Reps máx</label>
-                <NumberInput
-                  value={exercise.targetRepsMax}
-                  onChange={(v) => patchExercise(index, { targetRepsMax: v ?? 1 })}
-                  integer
-                  ariaLabel={`Reps máximas de ${exercise.name}`}
-                />
-              </div>
-            </div>
-            <div className="field" style={{ marginTop: 8 }}>
-              <label>Descanso (segundos)</label>
-              <div className="row wrap" style={{ gap: 6 }}>
-                {[45, 60, 75, 90, 120, 150, 180].map((seconds) => (
-                  <button
-                    key={seconds}
-                    className={`chip${exercise.restSeconds === seconds ? ' active' : ''}`}
-                    onClick={() => patchExercise(index, { restSeconds: seconds })}
+        {groupRoutineExercises(draft.exercises).map((grupo, indiceGrupo) => {
+          // Posicion del primer y ultimo ejercicio del grupo dentro de la lista completa.
+          const posiciones: number[] = grupo.exercises.map((e) => draft.exercises.indexOf(e))
+          const primero = posiciones[0]
+          const ultimo = posiciones[posiciones.length - 1]
+          const esSuperserie = grupo.kind === 'superset'
+          const letra = letraDeGrupo(indiceGrupo)
+          return (
+            <div key={`grupo-${indiceGrupo}-${grupo.exercises[0]?.exerciseId ?? ''}`}>
+              {esSuperserie ? (
+                <div className="superset-head">
+                  <span className="badge gold">Superserie {letra}</span>
+                  <span className="tiny muted">
+                    {resumenDeSuperserie(grupo.exercises)}
+                  </span>
+                </div>
+              ) : null}
+
+              {grupo.exercises.map((exercise, posicion) => {
+                const index = posiciones[posicion]
+                return (
+                  <div
+                    key={`${exercise.exerciseId}-${index}`}
+                    className={`card tight${esSuperserie ? ' inside-superset' : ''}`}
+                    style={{ background: 'var(--bg-elev-2)', marginTop: posicion === 0 ? 6 : 4 }}
                   >
-                    {seconds >= 60 ? `${seconds / 60} min` : `${seconds} s`}
-                  </button>
-                ))}
-              </div>
+                    <div className="row between" style={{ marginBottom: 8 }}>
+                      <div className="grow" style={{ fontWeight: 600, fontSize: '0.92rem' }}>
+                        {esSuperserie ? `${letra}${posicion + 1}. ` : `${index + 1}. `}
+                        {exercise.name}
+                      </div>
+                      <button className="icon-btn" onClick={() => move(index, -1)} aria-label="Subir">
+                        ↑
+                      </button>
+                      <button className="icon-btn" onClick={() => move(index, 1)} aria-label="Bajar">
+                        ↓
+                      </button>
+                      <button
+                        className="icon-btn danger"
+                        onClick={() =>
+                          setDraft((d) => ({ ...d, exercises: d.exercises.filter((_, i) => i !== index) }))
+                        }
+                        aria-label="Quitar"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <div className="grid-3">
+                      <div className="field">
+                        <label>Series</label>
+                        <NumberInput
+                          value={exercise.targetSets}
+                          onChange={(v) => patchExercise(index, { targetSets: v ?? 1 })}
+                          integer
+                          ariaLabel={`Series de ${exercise.name}`}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>Reps mín</label>
+                        <NumberInput
+                          value={exercise.targetRepsMin}
+                          onChange={(v) => patchExercise(index, { targetRepsMin: v ?? 1 })}
+                          integer
+                          ariaLabel={`Reps mínimas de ${exercise.name}`}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>Reps máx</label>
+                        <NumberInput
+                          value={exercise.targetRepsMax}
+                          onChange={(v) => patchExercise(index, { targetRepsMax: v ?? 1 })}
+                          integer
+                          ariaLabel={`Reps máximas de ${exercise.name}`}
+                        />
+                      </div>
+                    </div>
+                    <div className="field" style={{ marginTop: 8 }}>
+                      <label>{esSuperserie ? 'Descanso al acabar la ronda' : 'Descanso (segundos)'}</label>
+                      <div className="row wrap" style={{ gap: 6 }}>
+                        {[45, 60, 75, 90, 120, 150, 180].map((seconds) => (
+                          <button
+                            key={seconds}
+                            className={`chip${exercise.restSeconds === seconds ? ' active' : ''}`}
+                            onClick={() =>
+                              esSuperserie
+                                ? cambiarGrupo(posiciones, { restSeconds: seconds })
+                                : patchExercise(index, { restSeconds: seconds })
+                            }
+                          >
+                            {seconds >= 60 ? `${seconds / 60} min` : `${seconds} s`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Enlazar con el siguiente ejercicio para formar una superserie. */}
+                    {posicion === grupo.exercises.length - 1 && !esSuperserie && ultimo < draft.exercises.length - 1 ? (
+                      <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => agrupar(ultimo)}>
+                        ⇄ Enlazar con el siguiente (superserie)
+                      </button>
+                    ) : null}
+                    {esSuperserie && posicion === grupo.exercises.length - 1 ? (
+                      <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => separar(primero)}>
+                        ⇤ Separar la superserie
+                      </button>
+                    ) : null}
+                  </div>
+                )
+              })}
+
+              {/* Ajustes que son de toda la superserie, no de un ejercicio suelto. */}
+              {esSuperserie ? (
+                <div className="field" style={{ marginTop: 8, paddingLeft: 10, borderLeft: '2px solid var(--border)' }}>
+                  <label>Descanso entre ejercicios de la superserie</label>
+                  <div className="row wrap" style={{ gap: 6 }}>
+                    {[5, 10, 15, 20, 30, 45].map((seconds) => (
+                      <button
+                        key={seconds}
+                        className={`chip${(grupo.exercises[0].transitionSeconds ?? TRANSICION_POR_DEFECTO) === seconds ? ' active' : ''}`}
+                        onClick={() => cambiarGrupo(posiciones, { transitionSeconds: seconds })}
+                      >
+                        {seconds} s
+                      </button>
+                    ))}
+                  </div>
+                  <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+                    Lo que se descansa al pasar de un ejercicio al siguiente. El descanso largo va al
+                    acabar la ronda.
+                  </p>
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <button className="btn block" style={{ marginTop: 12 }} onClick={() => setPickerOpen(true)}>

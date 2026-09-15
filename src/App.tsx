@@ -214,10 +214,10 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   )
 
   const handleLogSet = useCallback(
-    async (input: NewSetInput, restSeconds: number) => {
+    async (input: NewSetInput, restSeconds: number, etiqueta?: string) => {
       await addSet(input)
       await reloadSets(input.sessionId)
-      if (settings.autoStartRest && restSeconds > 0) rest.start(restSeconds)
+      if (settings.autoStartRest && restSeconds > 0) rest.start(restSeconds, etiqueta)
     },
     [reloadSets, rest, settings.autoStartRest],
   )
@@ -393,6 +393,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
         <RestBar
           remaining={rest.remaining}
           total={rest.total}
+          etiqueta={rest.etiqueta}
           avisoSonando={rest.avisoSonando}
           onAdd={(s) => rest.addSeconds(s)}
           onStop={rest.stop}

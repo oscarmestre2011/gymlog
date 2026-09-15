@@ -74,11 +74,14 @@ export interface RestTimer {
   remaining: number
   total: number
   running: boolean
-  start: (seconds: number) => void
+  /** Arranca el descanso. `etiqueta` explica para que es (superserie, ronda...). */
+  start: (seconds: number, etiqueta?: string) => void
   stop: () => void
   addSeconds: (seconds: number) => void
   /** El aviso esta sonando ahora mismo (para que la barra lo muestre). */
   avisoSonando: boolean
+  /** Para que es este descanso, si tiene explicacion. */
+  etiqueta: string | null
 }
 
 /**
@@ -102,6 +105,7 @@ export function useRestTimer(
   const [now, setNow] = useState(() => Date.now())
   const firedRef = useRef(false)
   const [avisoSonando, setAvisoSonando] = useState(false)
+  const [etiqueta, setEtiqueta] = useState<string | null>(null)
 
   useEffect(() => {
     if (endsAt === null) return
@@ -168,11 +172,12 @@ export function useRestTimer(
     if (running) setAvisoSonando(false)
   }, [running])
 
-  const start = useCallback((seconds: number) => {
+  const start = useCallback((seconds: number, texto?: string) => {
     if (seconds <= 0) return
     const end = Date.now() + seconds * 1000
     firedRef.current = false
     setAvisoSonando(false)
+    setEtiqueta(texto ?? null)
     localStorage.setItem(REST_KEY, String(end))
     localStorage.setItem(REST_TOTAL_KEY, String(seconds))
     setTotal(seconds)
@@ -184,6 +189,7 @@ export function useRestTimer(
     localStorage.removeItem(REST_KEY)
     firedRef.current = false
     setAvisoSonando(false)
+    setEtiqueta(null)
     setEndsAt(null)
   }, [])
 
@@ -200,7 +206,7 @@ export function useRestTimer(
   }, [])
 
   return useMemo(
-    () => ({ endsAt, remaining, total, running, start, stop, addSeconds, avisoSonando }),
-    [endsAt, remaining, total, running, start, stop, addSeconds, avisoSonando],
+    () => ({ endsAt, remaining, total, running, start, stop, addSeconds, avisoSonando, etiqueta }),
+    [endsAt, remaining, total, running, start, stop, addSeconds, avisoSonando, etiqueta],
   )
 }

@@ -61,9 +61,60 @@ export interface RoutineExercise {
   targetSets: number
   targetRepsMin: number
   targetRepsMax: number
-  /** Descanso objetivo en segundos. */
+  /** Descanso objetivo en segundos. En una superserie, el descanso AL ACABAR LA RONDA. */
   restSeconds: number
+  /**
+   * En una superserie, los segundos que se descansan al pasar de un ejercicio al
+   * siguiente dentro de la misma ronda. Son pocos: se va de uno a otro casi seguido.
+   */
+  transitionSeconds?: number
+  /**
+   * Si el ejercicio va dentro de una superserie o suelto.
+   *
+   * Se guarda en cada ejercicio (y no en el grupo) a proposito: asi las rutinas creadas
+   * antes de que existieran las superseries se leen como "single" sin tocar nada, y no
+   * hace falta migrar ningun dato.
+   */
+  kind?: 'single' | 'superset'
+  /** Cuantos ejercicios van encadenados. Solo importa si kind es 'superset'. */
+  groupSize?: number
   notes?: string
+}
+
+/** Grupo de la rutina: un ejercicio suelto o una superserie de dos o mas. */
+export interface RoutineGroup {
+  kind: 'single' | 'superset'
+  exercises: RoutineExercise[]
+}
+
+/**
+ * Agrupa los ejercicios de una rutina en sueltos y superseries, conservando el orden.
+ *
+ * Los ejercicios de una superserie van seguidos en la lista: los "groupSize" primeros
+ * forman el grupo, y asi sucesivamente. Un groupSize invalido (1 o mayor que lo que
+ * queda) se trata como ejercicio suelto, para no dejar ejercicios fuera de la sesion.
+ */
+export function groupRoutineExercises(exercises: RoutineExercise[]): RoutineGroup[] {
+  const grupos: RoutineGroup[] = []
+  let i = 0
+  while (i < exercises.length) {
+    const actual = exercises[i]
+    const tamano = actual.groupSize ?? 1
+    const esSuperserie = actual.kind === 'superset' && tamano >= 2 && i + tamano <= exercises.length
+    if (esSuperserie) {
+      grupos.push({ kind: 'superset', exercises: exercises.slice(i, i + tamano) })
+      i += tamano
+    } else {
+      grupos.push({ kind: 'single', exercises: [actual] })
+      i += 1
+    }
+  }
+  return grupos
+}
+
+/** Letra del grupo dentro de la sesion: A, B, C... (para etiquetar "Superserie A"). */
+export function letraDeGrupo(indice: number): string {
+  return String.fromCharCode(65 + (indice % 26))
 }
 
 export interface Routine {

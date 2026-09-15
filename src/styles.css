@@ -460,6 +460,14 @@ select.input {
   gap: 4px;
 }
 
+/* Para que es este descanso: "Siguiente ejercicio" o "Fin de ronda". */
+.rest-label {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
 /* Aviso visible al terminar: en iPhone no hay sonido ni vibracion, asi que
    tiene que verse claramente en pantalla. */
 .rest-done-text {
@@ -502,6 +510,50 @@ select.input {
   background: var(--accent);
   border-radius: 99px;
   transition: width 0.25s linear;
+}
+
+/* ------------------------------ superseries ------------------------------ */
+
+/* Bloque que agrupa los ejercicios encadenados: se ve de un vistazo que van juntos. */
+.superset-block {
+  border-left: 3px solid rgba(201, 168, 76, 0.5);
+  padding-left: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.superset-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 2px;
+}
+
+/* Etiqueta A1, A2... al lado del nombre del ejercicio. */
+.superset-tag {
+  display: inline-block;
+  min-width: 22px;
+  margin-right: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(201, 168, 76, 0.18);
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  color: var(--warn);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Dentro de una superserie, la tarjeta se marca para distinguirla de un ejercicio suelto. */
+.exercise-card.inside-superset {
+  border-color: rgba(201, 168, 76, 0.35);
+}
+
+/* Tarjetas dentro del formulario de rutina. */
+.card.inside-superset {
+  border-color: rgba(201, 168, 76, 0.35);
 }
 
 /* -------------------------------- ejercicios ----------------------------- */

@@ -13,6 +13,7 @@ export function RestBar({
   remaining,
   total,
   avisoSonando = false,
+  etiqueta,
   onAdd,
   onStop,
 }: {
@@ -20,6 +21,8 @@ export function RestBar({
   total: number
   /** El aviso esta sonando ahora: la barra lo refleja. */
   avisoSonando?: boolean
+  /** Para que es este descanso: "Siguiente ejercicio", "Fin de ronda"... */
+  etiqueta?: string | null
   onAdd: (seconds: number) => void
   onStop: () => void
 }) {
@@ -34,7 +37,11 @@ export function RestBar({
     >
       <div className="clock">{done ? '¡Ya!' : formatClock(remaining)}</div>
       <div className="rest-info">
-        {done ? <div className="rest-done-text">¡Descanso terminado!</div> : null}
+        {done ? (
+          <div className="rest-done-text">¡Descanso terminado!</div>
+        ) : etiqueta ? (
+          <div className="rest-label">{etiqueta}</div>
+        ) : null}
         <div className="rest-progress">
           <div style={{ width: `${progress}%` }} />
         </div>

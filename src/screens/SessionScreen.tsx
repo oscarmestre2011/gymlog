@@ -13,7 +13,17 @@ import {
 } from '../db/repository'
 import { newId } from '../db'
 import type { NewSetInput } from '../App'
+import type { RestTimer } from '../hooks'
 import { ConfirmDialog } from '../components/Modal'
+import {
+  descansoTrasSerie,
+  etiquetaDeDescanso,
+  etiquetaDeSuperserie,
+  groupRoutineExercises,
+  resumenEnSuperserie,
+  letraDeGrupo,
+  resumenDeSuperserie,
+} from '../lib/supersets'
 import { ExercisePicker, summarizeSets } from '../components/ExercisePicker'
 import { NumberInput, targetLabel, targetSummary } from '../components/NumberInput'
 import {
@@ -33,6 +43,14 @@ interface ExerciseEntry {
   targetRepsMin: number
   targetRepsMax: number
   restSeconds: number
+  /**
+   * Si el ejercicio va dentro de una superserie. Hay que CONSERVAR estos campos al
+   * actualizar la sesion: si se pierden, al recargar la superserie desaparece y los
+   * ejercicios vuelven a comportarse como sueltos.
+   */
+  kind?: 'single' | 'superset'
+  groupSize?: number
+  transitionSeconds?: number
   notes?: string
 }
 
@@ -56,8 +74,9 @@ export function SessionScreen({
   session: Session
   sets: ExerciseSet[]
   settings: Settings
-  rest: { remaining: number; total: number; running: boolean; start: (s: number) => void }
-  onLogSet: (input: NewSetInput, restSeconds: number) => Promise<void>
+  /** Estado del cronometro de descanso; el tipo completo vive en hooks.ts. */
+  rest: Pick<RestTimer, 'remaining' | 'total' | 'running' | 'start'>
+  onLogSet: (input: NewSetInput, restSeconds: number, etiqueta?: string) => Promise<void>
   onChanged: () => Promise<void>
   onFinish: () => Promise<void>
   onDiscard: () => Promise<void>
@@ -157,6 +176,10 @@ export function SessionScreen({
       targetRepsMin: e.targetRepsMin,
       targetRepsMax: e.targetRepsMax,
       restSeconds: e.restSeconds,
+      // Se conservan las superseries: sin esto, al recargar la sesion se perderian.
+      kind: e.kind,
+      groupSize: e.groupSize,
+      transitionSeconds: e.transitionSeconds,
       notes: e.notes,
     }))
     await updateSession(session.id, { routineSnapshot: snapshot })
@@ -232,11 +255,24 @@ export function SessionScreen({
         notes: data.notes,
       })
       await onChanged()
-      if (advanceRest) rest.start(entry.restSeconds)
+      if (advanceRest) {
+        // Se calcula el descanso con las series que quedaran guardadas, no con las actuales.
+        const siguiente = descansoTrasSerie(entry, seriesTrasGuardar(entry, existing), entries)
+        rest.start(siguiente.segundos, etiquetaDeDescanso(siguiente))
+      }
       return
     }
 
     const order = orderedEntries.findIndex((e) => e.exerciseId === entry.exerciseId)
+    /*
+     * El descanso depende de las RONDAS de la superserie, asi que hay que calcularlo con la
+     * serie nueva ya incluida: si se calculara con las series de antes, al guardar el ultimo
+     * ejercicio de la ronda seguiria creyendo que falta gente.
+     */
+    const descanso = advanceRest
+      ? descansoTrasSerie(entry, seriesTrasGuardar(entry, undefined), entries)
+      : { segundos: 0, motivo: 'normal' as const }
+
     await onLogSet(
       {
         sessionId: session.id,
@@ -249,8 +285,38 @@ export function SessionScreen({
         isWarmup: data.isWarmup ?? false,
         notes: data.notes,
       },
-      advanceRest ? entry.restSeconds : 0,
+      descanso.segundos,
+      etiquetaDeDescanso(descanso),
     )
+  }
+
+  /**
+   * Las series tal y como quedaran despues de guardar esta.
+   *
+   * `existing` es la serie que se esta corrigiendo (si es una edicion) o undefined si es una
+   * serie nueva. Solo se usa para decidir el descanso, asi que basta con que refleje cuantas
+   * series hay de cada ejercicio.
+   */
+  function seriesTrasGuardar(entry: ExerciseEntry, existing?: ExerciseSet): ExerciseSet[] {
+    if (existing) {
+      // Editando: el numero de series no cambia.
+      return sets
+    }
+    return [
+      ...sets,
+      {
+        id: 'provisional',
+        sessionId: session.id,
+        exerciseId: entry.exerciseId,
+        exerciseName: entry.name,
+        order: 0,
+        setNumber: 0,
+        weight: 0,
+        reps: 0,
+        isWarmup: false,
+        completedAt: Date.now(),
+      },
+    ]
   }
 
   const handleRepeat = async (set: ExerciseSet) => {
@@ -258,7 +324,11 @@ export function SessionScreen({
     const fresh = await duplicateSet(set.id)
     if (fresh) {
       await onChanged()
-      rest.start(entries.find((e) => e.exerciseId === set.exerciseId)?.restSeconds ?? settings.defaultRestSeconds)
+      const entry = entries.find((e) => e.exerciseId === set.exerciseId)
+      const descanso = entry
+        ? descansoTrasSerie(entry, [...sets, fresh], entries)
+        : { segundos: settings.defaultRestSeconds, motivo: 'normal' as const }
+      rest.start(descanso.segundos, etiquetaDeDescanso(descanso))
     }
   }
 
@@ -334,25 +404,48 @@ export function SessionScreen({
         </div>
       ) : null}
 
-      {orderedEntries.map((entry) => (
-        <ExerciseCard
-          key={entry.exerciseId}
-          entry={entry}
-          sets={byExercise.get(entry.exerciseId) ?? []}
-          history={history[entry.exerciseId]}
-          increment={incrementFor(entry.exerciseId)}
-          descripcion={library.find((e) => e.id === entry.exerciseId)?.description}
-          onSaveSet={handleSaveSet}
-          onRepeat={handleRepeat}
-          onDeleteSet={handleDeleteSet}
-          onRemoveExercise={() => void handleRemoveExercise(entry)}
-          onChangeTargets={(patch) =>
-            void persistEntries(entries.map((e) => (e.exerciseId === entry.exerciseId ? { ...e, ...patch } : e)))
-          }
-          noteOpen={openNote === entry.exerciseId}
-          onToggleNote={() => setOpenNote((cur) => (cur === entry.exerciseId ? null : entry.exerciseId))}
-        />
-      ))}
+      {/*
+        Los ejercicios se muestran agrupados: los sueltos por un lado y las superseries
+        juntas, para que se vea de un vistazo que van encadenados y en que orden.
+      */}
+      {groupRoutineExercises(orderedEntries).map((grupo, indiceGrupo) => {
+        const esSuperserie = grupo.kind === 'superset'
+        const letra = letraDeGrupo(indiceGrupo)
+        const tarjetas = grupo.exercises.map((entry, posicion) => (
+          <ExerciseCard
+            key={entry.exerciseId}
+            entry={entry}
+            sets={byExercise.get(entry.exerciseId) ?? []}
+            history={history[entry.exerciseId]}
+            increment={incrementFor(entry.exerciseId)}
+            descripcion={library.find((e) => e.id === entry.exerciseId)?.description}
+            onSaveSet={handleSaveSet}
+            onRepeat={handleRepeat}
+            onDeleteSet={handleDeleteSet}
+            onRemoveExercise={() => void handleRemoveExercise(entry)}
+            onChangeTargets={(patch) =>
+              void persistEntries(entries.map((e) => (e.exerciseId === entry.exerciseId ? { ...e, ...patch } : e)))
+            }
+            noteOpen={openNote === entry.exerciseId}
+            onToggleNote={() => setOpenNote((cur) => (cur === entry.exerciseId ? null : entry.exerciseId))}
+            etiqueta={esSuperserie ? etiquetaDeSuperserie(letra, posicion) : undefined}
+            claseExtra={esSuperserie ? 'inside-superset' : undefined}
+            resumen={esSuperserie ? resumenEnSuperserie(grupo.exercises, posicion) : undefined}
+          />
+        ))
+
+        if (!esSuperserie) return <div key={`suelto-${grupo.exercises[0].exerciseId}`}>{tarjetas}</div>
+
+        return (
+          <div key={`superserie-${letra}-${grupo.exercises[0].exerciseId}`} className="superset-block">
+            <div className="superset-head">
+              <span className="badge gold">Superserie {letra}</span>
+              <span className="tiny muted">{resumenDeSuperserie(grupo.exercises)}</span>
+            </div>
+            {tarjetas}
+          </div>
+        )
+      })}
 
       {orderedEntries.length > 0 ? (
         <button className="btn block" onClick={() => setPickerOpen(true)}>
@@ -465,6 +558,9 @@ function ExerciseCard({
   onChangeTargets,
   noteOpen,
   onToggleNote,
+  etiqueta,
+  claseExtra,
+  resumen,
 }: {
   entry: ExerciseEntry
   sets: ExerciseSet[]
@@ -472,6 +568,12 @@ function ExerciseCard({
   increment: number
   /** Descripcion escrita por el usuario en la biblioteca de ejercicios. */
   descripcion?: string
+  /** Etiqueta dentro de una superserie: A1, A2... */
+  etiqueta?: string
+  /** Clase para marcar visualmente que va dentro de una superserie. */
+  claseExtra?: string
+  /** Texto de objetivo propio de las superseries (sustituye al normal). */
+  resumen?: string
   onSaveSet: (
     entry: ExerciseEntry,
     data: { weight?: number; reps?: number; rir?: number; isWarmup?: boolean; notes?: string },
@@ -497,12 +599,15 @@ function ExerciseCard({
   const targetReached = doneCount >= entry.targetSets
 
   return (
-    <div className="exercise-card">
+    <div className={`exercise-card${claseExtra ? ` ${claseExtra}` : ''}`}>
       <div className="exercise-head">
         <div className="grow">
-          <div className="name">{entry.name}</div>
+          <div className="name">
+            {etiqueta ? <span className="superset-tag">{etiqueta}</span> : null}
+            {entry.name}
+          </div>
           <div className="target">
-            {targetSummary(entry.targetSets, entry.targetRepsMin, entry.targetRepsMax, entry.restSeconds)}
+            {resumen ?? targetSummary(entry.targetSets, entry.targetRepsMin, entry.targetRepsMax, entry.restSeconds)}
             {doneCount > 0 ? ` · hechas ${doneCount}/${entry.targetSets}` : ''}
           </div>
         </div>
@@ -789,6 +894,10 @@ function toEntry(re: RoutineExercise): ExerciseEntry {
     targetRepsMin: re.targetRepsMin,
     targetRepsMax: re.targetRepsMax,
     restSeconds: re.restSeconds,
+    // Las superseries viajan con el ejercicio, tambien al empezar la sesion.
+    kind: re.kind,
+    groupSize: re.groupSize,
+    transitionSeconds: re.transitionSeconds,
     notes: re.notes,
   }
 }
