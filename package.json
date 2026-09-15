@@ -16,6 +16,7 @@
     "test:pwa": "node scripts/pwa.mjs",
     "test:pages": "node scripts/verify-pages.mjs",
     "test:live": "node scripts/verify-live.mjs",
+    "test:aviso-live": "node scripts/test-aviso-publicado.mjs",
     "test:update": "node scripts/update-banner.mjs",
     "test:update-real": "node scripts/test-update-real.mjs",
     "test:black-screen": "node scripts/test-no-black-screen.mjs",
@@ -41,7 +42,8 @@
     "check:apis": "node scripts/check-alert-apis.mjs",
     "measure:logo": "node scripts/measure-logo.mjs",
     "diagnose:update": "node scripts/diagnose-update.mjs",
-    "diagnose:cache": "node scripts/diagnose-cache.mjs"
+    "diagnose:cache": "node scripts/diagnose-cache.mjs",
+    "verificar:publicado": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verificar-publicado.ps1"
   },
   "dependencies": {
     "dexie": "^4.0.10",
