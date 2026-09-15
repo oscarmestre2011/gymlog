@@ -18,3 +18,6 @@ Thumbs.db
 
 # Compilaciones temporales de las pruebas de actualizacion
 .tmp-versiones/
+
+# Archivos temporales (mensajes de commit, etc.)
+.tmp-*
