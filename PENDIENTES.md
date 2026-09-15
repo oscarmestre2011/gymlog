@@ -44,9 +44,17 @@ usa mas gente, asi que no debe traer nada de nadie puesto.
 
 ### 3. Probar la carpeta de copias en un movil Android de verdad
 
-Que se elija la carpeta, que se recuerde al cerrar y volver a abrir, y que la copia automatica
-funcione cuando toque. En las pruebas automaticas solo se puede comprobar hasta donde llega el
-navegador simulado.
+El usuario la probo y encontro un fallo real: **se elegia la carpeta pero no guardaba**. Causa:
+al ir a escribir, el navegador ya no tenia el permiso concedido y la app se retiraba sin pedirlo.
+Arreglado: ahora pide el permiso al elegir la carpeta y otra vez al guardar, reintenta una vez si
+el navegador lo retira en ese momento, y si algo falla dice QUE ha fallado (permiso, carpeta
+perdida, sin espacio) en lugar de un mensaje generico.
+
+Queda pendiente comprobar en el movil, ya con el arreglo:
+- que la copia se guarde al pulsar «Comprobar y guardar ahora»;
+- si el permiso se pierde al cerrar del todo el navegador (es lo normal en movil), que al pulsar
+  el boton se vuelva a pedir y funcione;
+- que la copia automatica se haga sola cuando toque (semanal, quincenal o mensual).
 
 ### 4. Cuatro ideas del usuario, sin decidir
 

@@ -53,8 +53,27 @@ export type ResultadoCopia =
   | { estado: 'guardada'; archivo: string; carpeta: string }
   | { estado: 'sin-carpeta' }
   | { estado: 'sin-permiso' }
+  | { estado: 'carpeta-perdida' }
   | { estado: 'no-soportado' }
   | { estado: 'error'; detalle: string }
+
+/**
+ * Nombre legible de un error, para poder decir QUE ha fallado.
+ *
+ * Antes cualquier fallo se anunciaba igual ("no se pudo guardar"), y en el movil el usuario solo
+ * veia que no guardaba, sin saber por que. Distinguir el tipo de error es lo que permite
+ * arreglarlo: si es de permiso, se pide; si es de carpeta, se elige otra.
+ */
+export function nombreDeError(error: unknown): string {
+  const nombre = (error as { name?: string })?.name ?? ''
+  if (nombre === 'NotAllowedError') return 'permiso denegado'
+  if (nombre === 'NotFoundError') return 'la carpeta ya no está'
+  if (nombre === 'InvalidStateError') return 'carpeta no válida'
+  if (nombre === 'SecurityError') return 'el navegador ha bloqueado el acceso'
+  if (nombre === 'QuotaExceededError') return 'no queda espacio'
+  if (nombre === 'AbortError') return 'operación cancelada'
+  return nombre || String(error).slice(0, 80)
+}
 
 /* -------------------- guardar y leer la carpeta elegida -------------------- */
 
@@ -186,22 +205,67 @@ export async function copiarACarpeta(opciones: { pedirPermiso?: boolean } = {}):
 
   const carpeta = await leerCarpeta()
   if (!carpeta) return { estado: 'sin-carpeta' }
+
+  /*
+   * Si el usuario esta delante (ha pulsado un boton), NO se abandona por falta de permiso: se
+   * PIDE. Este era el fallo que sufria el usuario en el movil: la carpeta se elegia bien, pero
+   * al ir a guardar el permiso ya no estaba concedido y la app se retiraba sin intentarlo
+   * siquiera, sin dejar forma de arreglarlo desde esa pantalla.
+   */
   if (!(await permisoParaEscribir(carpeta, opciones.pedirPermiso ?? false))) {
     return { estado: 'sin-permiso' }
   }
 
-  try {
-    const copia = await exportBackup()
-    const archivo = nombreDeCopia()
+  const copia = await exportBackup()
+  const archivo = nombreDeCopia()
+  const contenido = JSON.stringify(copia, null, 2)
+
+  const escribir = async () => {
     const manejador = await carpeta.getFileHandle(archivo, { create: true })
     const escritor = await manejador.createWritable()
-    await escritor.write(JSON.stringify(copia, null, 2))
-    await escritor.close()
-    await saveSettings({ lastBackupAt: Date.now() })
-    return { estado: 'guardada', archivo, carpeta: carpeta.name }
-  } catch (error) {
-    return { estado: 'error', detalle: String(error).slice(0, 120) }
+    try {
+      await escritor.write(contenido)
+    } finally {
+      /*
+       * Cerrar SIEMPRE. Si se cierra solo cuando la escritura va bien, un fallo deja el archivo
+       * a medias y sin confirmar, y el error que se ve despues no tiene nada que ver con el
+       * problema real.
+       */
+      await escritor.close().catch(() => undefined)
+    }
   }
+
+  try {
+    await escribir()
+  } catch (error) {
+    const tipo = nombreDeError(error)
+
+    /*
+     * Si el navegador retiro el permiso justo ahora (pasa en el movil), se pide y se reintenta
+     * una vez. El usuario esta delante y acaba de pulsar: es el momento correcto para pedirlo.
+     */
+    if ((error as { name?: string })?.name === 'NotAllowedError' && (opciones.pedirPermiso ?? false)) {
+      if (await permisoParaEscribir(carpeta, true)) {
+        try {
+          await escribir()
+          await saveSettings({ lastBackupAt: Date.now() })
+          return { estado: 'guardada', archivo, carpeta: carpeta.name }
+        } catch (segundo) {
+          return { estado: 'error', detalle: nombreDeError(segundo) }
+        }
+      }
+      return { estado: 'sin-permiso' }
+    }
+
+    if ((error as { name?: string })?.name === 'NotFoundError') {
+      // La carpeta elegida ya no existe (se borro o se movio): hay que elegir otra.
+      return { estado: 'carpeta-perdida' }
+    }
+    return { estado: 'error', detalle: tipo }
+  }
+
+  await saveSettings({ lastBackupAt: Date.now() })
+  return { estado: 'guardada', archivo, carpeta: carpeta.name }
 }
 
 /**

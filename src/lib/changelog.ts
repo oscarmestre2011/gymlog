@@ -37,6 +37,16 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.1.1',
+    fecha: '2026-09-16',
+    titulo: 'Arreglada la copia en carpeta',
+    cambios: [
+      { tipo: 'arreglo', texto: 'La copia en carpeta no guardaba en algunos móviles: al elegir la carpeta se concedía el permiso, pero al ir a guardar ya no estaba y la app se retiraba sin pedirlo. Ahora lo pide en el momento de guardar (y al elegir la carpeta), y funciona.' },
+      { tipo: 'arreglo', texto: 'Si algo falla al guardar, la app dice QUÉ ha fallado (permiso, carpeta perdida, sin espacio) en lugar de un mensaje genérico.' },
+      { tipo: 'mejora', texto: 'Los avisos de error duran más en pantalla: antes desaparecían antes de que diera tiempo a leerlos.' },
+    ],
+  },
+  {
     version: '1.1.0',
     fecha: '2026-09-16',
     titulo: 'Registro de actualizaciones y copias automaticas',

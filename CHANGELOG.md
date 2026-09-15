@@ -3,6 +3,14 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.1.1 — Arreglada la copia en carpeta
+
+_2026-09-16_
+
+- **Arreglado:** La copia en carpeta no guardaba en algunos móviles: al elegir la carpeta se concedía el permiso, pero al ir a guardar ya no estaba y la app se retiraba sin pedirlo. Ahora lo pide en el momento de guardar (y al elegir la carpeta), y funciona.
+- **Arreglado:** Si algo falla al guardar, la app dice QUÉ ha fallado (permiso, carpeta perdida, sin espacio) en lugar de un mensaje genérico.
+- **Mejorado:** Los avisos de error duran más en pantalla: antes desaparecían antes de que diera tiempo a leerlos.
+
 ## 1.1.0 — Registro de actualizaciones y copias automaticas
 
 _2026-09-16_

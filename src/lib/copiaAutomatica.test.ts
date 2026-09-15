@@ -7,7 +7,7 @@
  * quedaria sin copias y sin saberlo.
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
-import { nombreDeCopia, permisoParaEscribir, soportado, type CarpetaElegida } from './copiaAutomatica'
+import { nombreDeCopia, nombreDeError, permisoParaEscribir, soportado, type CarpetaElegida } from './copiaAutomatica'
 
 /** Carpeta de mentira, con el permiso que se le indique. */
 function carpetaFalsa(estado: PermissionState, concederaAlPedir = false): CarpetaElegida {
@@ -93,6 +93,38 @@ describe('permisos de escritura', () => {
     expect(await permisoParaEscribir(carpeta, true)).toBe(false)
   })
 
+  it('si el permiso está pendiente y el usuario está delante, se PIDE (no se abandona)', async () => {
+    /*
+     * Este era el fallo del movil: la carpeta se elegia bien, pero al guardar el permiso ya no
+     * estaba y la app se retiraba sin pedirlo. El usuario solo veia que no guardaba.
+     */
+    let pedido = 0
+    const carpeta: CarpetaElegida = {
+      ...carpetaFalsa('prompt', true),
+      requestPermission: async () => {
+        pedido += 1
+        return 'granted'
+      },
+    }
+    expect(await permisoParaEscribir(carpeta, true)).toBe(true)
+    expect(pedido).toBe(1)
+  })
+
+  it('si no hay nadie delante (copia automática), no se pide permiso', async () => {
+    // Sin interaccion del usuario los navegadores no lo conceden: pedirlo seria inutil y ademas
+    // molesto. Se informa y el usuario lo renueva cuando quiera.
+    let pedido = 0
+    const carpeta: CarpetaElegida = {
+      ...carpetaFalsa('prompt', true),
+      requestPermission: async () => {
+        pedido += 1
+        return 'granted'
+      },
+    }
+    expect(await permisoParaEscribir(carpeta, false)).toBe(false)
+    expect(pedido).toBe(0)
+  })
+
   it('si el navegador no sabe consultar permisos, se asume que si (caso raro)', async () => {
     const carpeta: CarpetaElegida = {
       kind: 'directory',
@@ -102,5 +134,25 @@ describe('permisos de escritura', () => {
       }),
     }
     expect(await permisoParaEscribir(carpeta, false)).toBe(true)
+  })
+})
+
+describe('mensajes de error comprensibles', () => {
+  /*
+   * Antes cualquier fallo se anunciaba igual ("no se pudo guardar") y en el movil el usuario no
+   * podia saber que pasaba. Distinguir el tipo de error es lo que permite arreglarlo.
+   */
+  it('traduce los errores del navegador a algo que se entiende', () => {
+    expect(nombreDeError({ name: 'NotAllowedError' })).toBe('permiso denegado')
+    expect(nombreDeError({ name: 'NotFoundError' })).toBe('la carpeta ya no está')
+    expect(nombreDeError({ name: 'QuotaExceededError' })).toBe('no queda espacio')
+    expect(nombreDeError({ name: 'SecurityError' })).toBe('el navegador ha bloqueado el acceso')
+    expect(nombreDeError({ name: 'AbortError' })).toBe('operación cancelada')
+    expect(nombreDeError({ name: 'InvalidStateError' })).toBe('carpeta no válida')
+  })
+
+  it('con un error desconocido, al menos dice su nombre', () => {
+    expect(nombreDeError({ name: 'ErrorRaro' })).toBe('ErrorRaro')
+    expect(nombreDeError('algo ha pasado')).toContain('algo ha pasado')
   })
 })

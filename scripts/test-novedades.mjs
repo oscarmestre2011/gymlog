@@ -134,6 +134,12 @@ try {
   check('Sin carpeta, avisa de que hay que elegirla', /Elige primero una carpeta/i.test(sinCarpeta), sinCarpeta.match(/Elige primero[^\n]*/)?.[0] ?? 'no avisa')
   await page.screenshot({ path: join(shotsDir, '36-carpeta-copias.png'), fullPage: true })
 
+  /*
+   * El caso del permiso retirado (el fallo que reporto el usuario en su movil) NO se prueba
+   * aqui, porque en este escenario la carpeta es simulada y no se puede recordar. Tiene su
+   * propia prueba, con una carpeta real: scripts/test-carpeta-permiso.mjs.
+   */
+
   check('Sin errores de JavaScript en Chromium', errores.length === 0, errores.join(' | '))
 } finally {
   await browser.close()

@@ -19,8 +19,10 @@ import { Novedades } from '../components/Novedades'
 import {
   copiarACarpeta,
   elegirCarpeta,
+  guardarCarpeta,
   leerCarpeta,
   nombreDeCopia,
+  permisoParaEscribir,
   soportado,
   type CarpetaElegida,
 } from '../lib/copiaAutomatica'
@@ -38,7 +40,7 @@ export function SettingsScreen({
 }: {
   settings: Settings
   onSave: (patch: Partial<Settings>) => Promise<void>
-  notify: (message: string) => void
+  notify: (message: string, duracionMs?: number) => void
   /** Si la pantalla se esta manteniendo encendida o por que no. */
   estadoPantalla?: EstadoPantalla
   reintentarPantalla?: () => void
@@ -66,7 +68,6 @@ export function SettingsScreen({
         setEstadoCarpeta('lista')
         return
       }
-      const { permisoParaEscribir } = await import('../lib/copiaAutomatica')
       const puede = await permisoParaEscribir(guardada, false)
       if (vivo) setEstadoCarpeta(puede ? 'lista' : 'sin-permiso')
     })()
@@ -276,8 +277,18 @@ export function SettingsScreen({
                     return
                   }
                   setCarpeta(resultado.carpeta)
-                  setEstadoCarpeta('lista')
-                  notify(`Carpeta elegida: ${resultado.carpeta.name}`)
+                  /*
+                   * Se comprueba el permiso AL ELEGIR, no solo al guardar. Asi el usuario se
+                   * entera aqui (que es cuando esta delante del dialogo) y no mas tarde, cuando
+                   * le diga que no puede escribir y ya no sepa por que.
+                   */
+                  const puede = await permisoParaEscribir(resultado.carpeta, true)
+                  setEstadoCarpeta(puede ? 'lista' : 'sin-permiso')
+                  notify(
+                    puede
+                      ? `Carpeta elegida: ${resultado.carpeta.name}`
+                      : 'Carpeta elegida, pero el navegador no deja escribir en ella',
+                  )
                 }}
               >
                 {carpeta ? 'Cambiar de carpeta' : '📁 Elegir carpeta'}
@@ -299,8 +310,14 @@ export function SettingsScreen({
                       notify(`Copia guardada en ${resultado.carpeta}`)
                     } else if (resultado.estado === 'sin-permiso') {
                       setEstadoCarpeta('sin-permiso')
-                      notify('Sin permiso para escribir en la carpeta')
+                      notify('El navegador no ha dado permiso para escribir')
+                    } else if (resultado.estado === 'carpeta-perdida') {
+                      await guardarCarpeta(null)
+                      setCarpeta(null)
+                      setEstadoCarpeta('lista')
+                      notify('Esa carpeta ya no existe: elige otra')
                     } else if (resultado.estado === 'error') {
+                      // Se dice QUE ha fallado, no solo que ha fallado.
                       notify(`No se pudo guardar: ${resultado.detalle}`)
                     }
                   } finally {
@@ -315,7 +332,7 @@ export function SettingsScreen({
                   className="btn ghost"
                   disabled={busy}
                   onClick={async () => {
-                    await (await import('../lib/copiaAutomatica')).guardarCarpeta(null)
+                    await guardarCarpeta(null)
                     setCarpeta(null)
                     notify('Carpeta olvidada')
                   }}
@@ -353,6 +370,12 @@ export function SettingsScreen({
               Una carpeta del propio móvil te protege de borrar los datos del navegador o de
               desinstalar la app, pero <b>no de perder el móvil</b>: para eso, saca el archivo del
               teléfono de vez en cuando (compártelo o súbelo a la nube).
+            </p>
+
+            <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
+              Si algún día pone <b>«permiso caducado»</b>, es normal: los navegadores de móvil
+              retiran el permiso de escritura al cerrarse del todo, por seguridad. Pulsa
+              «Comprobar y guardar ahora», acepta, y vuelve a funcionar.
             </p>
           </>
         )}
@@ -563,7 +586,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.1.0</span>
+          <span className="v">1.1.1</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

@@ -211,9 +211,18 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
     }
   }, [updateReady])
 
-  const notify = useCallback((message: string) => {
+  /**
+   * Aviso breve en pantalla.
+   *
+   * Los mensajes de error duran mas: si algo falla (por ejemplo al guardar la copia), el usuario
+   * necesita tiempo para leer QUE ha fallado. Con 2,6 segundos se iba antes de que diera tiempo.
+   * Se puede forzar la duracion con el segundo argumento.
+   */
+  const notify = useCallback((message: string, duracionMs?: number) => {
     setToast(message)
-    window.setTimeout(() => setToast((current) => (current === message ? null : current)), 2600)
+    const esError = /no se pudo|no ha dado|no deja|no queda|denegado|no se ha podido|ya no existe/i.test(message)
+    const tiempo = duracionMs ?? (esError ? 6500 : 2600)
+    window.setTimeout(() => setToast((current) => (current === message ? null : current)), tiempo)
   }, [])
 
   /* -------------------- copia automatica, si toca ------------------------ */

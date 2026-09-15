@@ -82,7 +82,7 @@ export function SessionScreen({
   onDiscard: () => Promise<void>
   /** Sale a mirar otra pantalla sin cerrar la sesión: se puede volver cuando se quiera. */
   onBackToApp: () => void
-  notify: (message: string) => void
+  notify: (message: string, duracionMs?: number) => void
 }) {
   const [entries, setEntries] = useState<ExerciseEntry[]>(() => session.routineSnapshot.map(toEntry))
   const [openNote, setOpenNote] = useState<string | null>(null)
