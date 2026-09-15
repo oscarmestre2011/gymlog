@@ -74,13 +74,24 @@ try {
 
   /* ---------------- 2. Simular que hay una version nueva ------------------ */
   console.log('\n--- 2. Simulando que se acaba de publicar una versión nueva ---')
-  const archivoPublicado = await page.evaluate(() => {
+  const publicado = await page.evaluate(async () => {
     const src = [...document.querySelectorAll('script[src]')]
       .map((s) => s.getAttribute('src') ?? '')
       .find((s) => /index-[A-Za-z0-9_-]+\.js/.test(s))
-    return /index-[A-Za-z0-9_-]+\.js/.exec(src ?? '')?.[0] ?? '?'
+    const archivo = /index-[A-Za-z0-9_-]+\.js/.exec(src ?? '')?.[0] ?? '?'
+    /*
+     * La version se lee del propio archivo publicado, no se escribe a mano: antes estaba fijada
+     * en el script y la prueba fallaba al publicar la version siguiente, con un fallo que
+     * parecia de la app y no lo era.
+     */
+    const codigo = await fetch(src).then((r) => r.text())
+    const version = /(\d+\.\d+\.\d+)/.exec(codigo.match(/<span className="v">(\d+\.\d+\.\d+)<\/span>/)?.[0] ?? '')?.[1]
+      ?? /1\.\d+\.\d+/.exec(codigo)?.[0]
+      ?? '?'
+    return { archivo, version }
   })
-  console.log(`   archivo en uso: ${archivoPublicado}`)
+  const archivoPublicado = publicado.archivo
+  console.log(`   archivo en uso: ${archivoPublicado} · versión: ${publicado.version}`)
 
   // Solo se falsea la respuesta de la comprobacion: se devuelve el mismo html con otro nombre.
   await context.route('**/index.html?comprobacion=*', async (route) => {
@@ -110,7 +121,11 @@ try {
     const novedades = await page.locator('body').innerText()
     check('El botón abre las Novedades', /Novedades/i.test(novedades))
     check('Y cuenta qué ha cambiado', /NUEVO|ARREGLADO|MEJORADO/i.test(novedades), novedades.match(/(NUEVO|ARREGLADO|MEJORADO)[^\n]*/)?.[0] ?? '')
-    check('Con la versión publicada destacada', /1\.1\.0/.test(novedades), novedades.match(/1\.1\.0[^\n]*/)?.[0] ?? '')
+    check(
+      'Con la versión publicada destacada',
+      publicado.version !== '?' && novedades.includes(publicado.version),
+      `${publicado.version} → ${novedades.match(/\d+\.\d+\.\d+[^\n]*/)?.[0] ?? 'no aparece'}`,
+    )
     await page.screenshot({ path: join(shotsDir, '37-aviso-publicado.png') })
   }
 
