@@ -193,6 +193,8 @@ export interface Session {
   metrics: SessionMetrics
 }
 
+import type { NivelActividad } from './lib/perfil'
+
 /** Medicion corporal de un dia. Todos los campos salvo la fecha son opcionales. */
 export interface BodyMeasurement {
   id: string
@@ -253,6 +255,19 @@ export interface Settings {
    * indicadores no se muestran y la app pide que se configure.
    */
   heightCm?: number
+  /**
+   * Fecha de nacimiento, en formato YYYY-MM-DD.
+   *
+   * Se guarda la fecha y NO la edad: la edad caduca cada ano, y guardada como numero en dos anos
+   * estaria mal y nadie se acordaria de cambiarla. La edad se calcula sola.
+   */
+  birthDate?: string
+  /** Sexo: las formulas de gasto energetico lo necesitan. Si falta, no se estima nada. */
+  sex?: 'hombre' | 'mujer'
+  /** Cuanto se mueve al dia, para estimar el gasto total. */
+  activity?: NivelActividad
+  /** Porcentaje de grasa corporal, si se conoce. Permite una formula mas exacta. */
+  bodyFatPercent?: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {

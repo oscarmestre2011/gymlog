@@ -3,6 +3,16 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.3.0 — Perfil del deportista y arreglo de la carpeta de copias
+
+_2026-09-16_
+
+- **Nuevo:** Perfil del deportista: altura, fecha de nacimiento, sexo y cuánto te mueves al día. Con eso calcula tu edad (sola, desde la fecha), el IMC, la relación cintura/altura y una estimación de lo que gastas al día y de la proteína que te toca.
+- **Mejorado:** El peso NO se pide en el perfil: se coge de tu última medición corporal, así no hay dos sitios donde apuntarlo ni pueden contradecirse.
+- **Mejorado:** Si indicas tu porcentaje de grasa, la estimación pasa a usar una fórmula mejor (Katch-McArdle), que parte de tu masa magra.
+- **Mejorado:** La pantalla explica de dónde sale cada número y avisa de que son estimaciones, no un diagnóstico médico.
+- **Arreglado:** La carpeta de las copias automáticas no se podía recordar en el móvil («no se ha podido recordar la carpeta»). Era un fallo de la app: la carpeta se guardaba de una forma que el navegador del móvil rechaza. Ya funciona, y si vuelve a fallar el aviso dice el motivo.
+
 ## 1.2.0 — Ejercicios plegables y cambio de ejercicio
 
 _2026-09-16_

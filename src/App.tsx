@@ -22,6 +22,7 @@ import { SessionScreen } from './screens/SessionScreen'
 import { RoutinesScreen } from './screens/RoutinesScreen'
 import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen'
 import { MeasurementsScreen } from './screens/MeasurementsScreen'
+import { ProfileScreen } from './screens/ProfileScreen'
 import { Novedades } from './components/Novedades'
 import { copiaAutomaticaSiToca } from './lib/copiaAutomatica'
 import { VERSIONES } from './lib/changelog'
@@ -90,6 +91,8 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   const [verMedidas, setVerMedidas] = useState(false)
   /** Pantalla de novedades: se entra desde el aviso de version nueva. */
   const [verNovedades, setVerNovedades] = useState(false)
+  /** Perfil del deportista: se entra desde Progresion y desde Ajustes. */
+  const [verPerfil, setVerPerfil] = useState(false)
   /** El aviso de version nueva se mide para dejarle hueco y que no tape la cabecera. */
   const avisoRef = useRef<HTMLDivElement | null>(null)
 
@@ -408,6 +411,23 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
     )
   }
 
+  if (verPerfil) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <button className="icon-btn" onClick={() => setVerPerfil(false)} aria-label="Volver">
+            ←
+          </button>
+          <div className="grow">
+            <h1>Perfil del deportista</h1>
+            <div className="sub">Tus datos y lo que sale de ellos</div>
+          </div>
+        </header>
+        <ProfileScreen />
+      </div>
+    )
+  }
+
   if (verMedidas) {
     return (
       <div className="app">
@@ -481,7 +501,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
           ) : tab === 'ejercicios' ? (
             <ExerciseLibraryScreen notify={notify} />
           ) : tab === 'progreso' ? (
-            <ProgressScreen onVerMedidas={() => setVerMedidas(true)} />
+            <ProgressScreen onVerMedidas={() => setVerMedidas(true)} onVerPerfil={() => setVerPerfil(true)} />
           ) : tab === 'cardio' ? (
             <CardioScreen notify={notify} />
           ) : (
@@ -491,6 +511,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
             notify={notify}
             estadoPantalla={pantalla.estado}
             reintentarPantalla={pantalla.reintentar}
+            onVerPerfil={() => setVerPerfil(true)}
           />
           )}
         </>

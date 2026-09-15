@@ -74,7 +74,7 @@ try {
   /* ================= 2. Carpeta de copias (con soporte) ================= */
   console.log('\n--- 2. Carpeta de copias en un navegador que SÍ la soporta ---')
   await page.getByRole('button', { name: 'Volver' }).first().click().catch(async () => {
-    await page.getByRole('button', { name: '←' }).first().click()
+    await page.getByRole('button', { name: 'Volver' }).first().click()
   })
   await page.waitForTimeout(800)
 

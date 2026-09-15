@@ -14,7 +14,6 @@ import { ConfirmDialog } from '../components/Modal'
 import { descargarArchivo, descargarCopiaDeSeguridad } from '../lib/descargar'
 import { VERSIONES } from '../lib/changelog'
 import { audioDisponible, duracionDelAviso } from '../lib/audio'
-import { NumberInput } from '../components/NumberInput'
 import { Novedades } from '../components/Novedades'
 import {
   copiarACarpeta,
@@ -37,6 +36,7 @@ export function SettingsScreen({
   notify,
   estadoPantalla = 'inactivo',
   reintentarPantalla,
+  onVerPerfil,
 }: {
   settings: Settings
   onSave: (patch: Partial<Settings>) => Promise<void>
@@ -44,6 +44,8 @@ export function SettingsScreen({
   /** Si la pantalla se esta manteniendo encendida o por que no. */
   estadoPantalla?: EstadoPantalla
   reintentarPantalla?: () => void
+  /** Abre la pantalla del perfil del deportista. */
+  onVerPerfil?: () => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [pendingImport, setPendingImport] = useState<BackupFile | null>(null)
@@ -273,7 +275,10 @@ export function SettingsScreen({
                   const resultado = await elegirCarpeta()
                   if (resultado.estado === 'cancelada') return
                   if (resultado.estado === 'no-guardada' || !resultado.carpeta) {
-                    notify('No se ha podido recordar la carpeta: prueba con otra')
+                    // Con el motivo a la vista: sin él no hay forma de saber qué arreglar.
+                    notify(
+                      `No se ha podido recordar la carpeta (${resultado.detalle ?? 'motivo desconocido'})`,
+                    )
                     return
                   }
                   setCarpeta(resultado.carpeta)
@@ -407,24 +412,19 @@ export function SettingsScreen({
         </div>
       ) : null}
 
-      {/* ------------------------------- medidas ------------------------------- */}
+      {/* ---------------------------- perfil ------------------------------- */}
       <div className="card">
-        <h2 className="card-title">Medidas corporales</h2>
-        <div className="field">
-          <label htmlFor="ajuste-altura">Tu altura (cm)</label>
-          <NumberInput
-            value={settings.heightCm}
-            onChange={(v) => void onSave({ heightCm: v })}
-            integer
-            ariaLabel="Tu altura en centímetros"
-            placeholder="170"
-          />
-          <p className="tiny muted" style={{ margin: '6px 0 0' }}>
-            Hace falta para el IMC y el indicador cintura/altura. Sin ella, esos dos indicadores no
-            se muestran: cada persona tiene su altura, y usar una que no es la tuya daría números
-            falsos.
-          </p>
-        </div>
+        <h2 className="card-title">Perfil del deportista</h2>
+        <p className="small muted" style={{ marginTop: 0 }}>
+          Tu altura, tu fecha de nacimiento, el sexo y cuánto te mueves al día. Con eso la app
+          calcula tu edad, el IMC, la relación cintura/altura y una estimación de lo que gastas al
+          día. El peso se coge de las medidas corporales, así que no hay que apuntarlo dos veces.
+        </p>
+        {onVerPerfil ? (
+          <button className="btn block" onClick={onVerPerfil}>
+            Ver mi perfil
+          </button>
+        ) : null}
       </div>
 
       {/* ------------------------------- pantalla ------------------------------ */}
@@ -586,7 +586,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.2.0</span>
+          <span className="v">1.3.0</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

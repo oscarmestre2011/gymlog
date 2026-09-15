@@ -10,6 +10,7 @@ import {
 import { useQuery } from '../hooks'
 import { formatKilograms, formatNumber, prettyDate, startOfWeekISO, todayISO } from '../lib/format'
 import { cinturaAltura, resumenDe, riesgoCinturaAltura } from '../lib/medidas'
+import { edadDesde, gastoEnReposo, gastoTotal, imcPerfil } from '../lib/perfil'
 import { DEFAULT_SETTINGS } from '../types'
 import { summarizeSets } from '../components/ExercisePicker'
 
@@ -17,7 +18,13 @@ import { summarizeSets } from '../components/ExercisePicker'
  * Progresion por ejercicio. Replica la tabla que el usuario ya mantiene a mano
  * en su vault, pero generada sola a partir de las series registradas.
  */
-export function ProgressScreen({ onVerMedidas }: { onVerMedidas?: () => void }) {
+export function ProgressScreen({
+  onVerMedidas,
+  onVerPerfil,
+}: {
+  onVerMedidas?: () => void
+  onVerPerfil?: () => void
+}) {
   const [selected, setSelected] = useState<string | null>(null)
   const { data: trained, loading } = useQuery(() => listTrainedExercises(), [])
 
@@ -52,6 +59,7 @@ export function ProgressScreen({ onVerMedidas }: { onVerMedidas?: () => void }) 
           Las medidas van ARRIBA y se muestran tambien cuando aun no hay series: se pueden
           apuntar desde el primer dia, sin haber entrenado nunca.
         */}
+        <ResumenPerfil onVer={onVerPerfil} />
         <ResumenMedidas onVer={onVerMedidas} />
         <div className="empty">
           <div className="big">📈</div>
@@ -64,7 +72,8 @@ export function ProgressScreen({ onVerMedidas }: { onVerMedidas?: () => void }) 
 
   return (
     <div className="screen">
-      {/* --------------------------- medidas corporales ------------------------- */}
+      {/* ------------------------ perfil y medidas ------------------------------ */}
+      <ResumenPerfil onVer={onVerPerfil} />
       <ResumenMedidas onVer={onVerMedidas} />
 
       {/* ------------------------- selector de ejercicio ------------------------ */}
@@ -229,6 +238,77 @@ export function ProgressScreen({ onVerMedidas }: { onVerMedidas?: () => void }) 
  * Se muestran peso y cintura, que son las dos senales que el propio plan marca como
  * fiables ("cintura quincenal abajo y fuerza arriba"), con acceso al historial completo.
  */
+/**
+ * Resumen del perfil del deportista.
+ *
+ * Va ARRIBA del todo en Progresion: la edad, el peso, el IMC y lo que se estima que gasta al dia
+ * son el marco en el que se lee todo lo demas (si el peso baja, si la cintura baja...).
+ */
+function ResumenPerfil({ onVer }: { onVer?: () => void }) {
+  const { data: ajustes } = useQuery(() => getSettings(), [], DEFAULT_SETTINGS)
+  const { data: mediciones } = useQuery(() => listMeasurements(), [], [])
+  /** Los ajustes pueden no haber cargado todavia; hasta entonces se usan los de por defecto. */
+  const settings = ajustes ?? DEFAULT_SETTINGS
+  const peso = resumenDe(mediciones ?? [], 'weightKg').ultima ?? null
+  const pesoKg = peso?.weightKg
+  const edad = edadDesde(settings.birthDate)
+  const imc = imcPerfil(pesoKg, settings.heightCm)
+  const total = gastoTotal(gastoEnReposo(settings, pesoKg, edad), settings.activity)
+
+  const hayAlgo = edad !== null || imc !== null || total !== null
+
+  return (
+    <div className="card">
+      <div className="row between" style={{ marginBottom: 10 }}>
+        <h3 className="card-title" style={{ margin: 0 }}>
+          Perfil del deportista
+        </h3>
+        {peso ? <span className="tiny muted">peso del {prettyDate(peso.date)}</span> : null}
+      </div>
+
+      {hayAlgo ? (
+        <div className="stats">
+          {edad !== null ? (
+            <div className="stat">
+              <div className="value">{edad}</div>
+              <div className="label">años</div>
+            </div>
+          ) : null}
+          {pesoKg ? (
+            <div className="stat">
+              <div className="value">{formatNumber(pesoKg, 1)} kg</div>
+              <div className="label">peso</div>
+            </div>
+          ) : null}
+          {imc !== null ? (
+            <div className="stat">
+              <div className="value">{formatNumber(imc, 1)}</div>
+              <div className="label">IMC</div>
+            </div>
+          ) : null}
+          {total !== null ? (
+            <div className="stat">
+              <div className="value">{formatNumber(total)}</div>
+              <div className="label">kcal al día</div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <p className="small muted" style={{ margin: 0 }}>
+          Con tu altura, tu fecha de nacimiento y tu peso, aquí verás tu edad, tu IMC y una
+          estimación de lo que gastas al día.
+        </p>
+      )}
+
+      {onVer ? (
+        <button className="btn block" style={{ marginTop: 10 }} onClick={onVer}>
+          {hayAlgo ? 'Ver mi perfil' : 'Completar mi perfil'}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 function ResumenMedidas({ onVer }: { onVer?: () => void }) {
   const { data: mediciones } = useQuery(() => listMeasurements(), [], [])
   const { data: settings } = useQuery(() => getSettings(), [], DEFAULT_SETTINGS)

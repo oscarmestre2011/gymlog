@@ -92,6 +92,14 @@ function abrirBase(): Promise<IDBDatabase> {
  * es un objeto que hay que serializar estructuradamente; en el almacenamiento de texto se
  * perderia. Se hace en su propio almacen, con una transaccion propia: asi no depende de la
  * version del esquema de datos ni hay que migrar la base cuando se anada esta funcion.
+ *
+ * OJO con la clave, que aqui estuvo un fallo que solo se veia en el movil:
+ * el almacen se declara con clave propia (`'carpeta-copia': 'clave'`), asi que la clave va DENTRO
+ * del objeto que se guarda y NO se pasa como segundo argumento de `put`. Pasandola aparte, el
+ * navegador del movil respondia `DataError: the object store uses in-line keys and the key
+ * parameter was provided`, la carpeta no se guardaba y el usuario veia "no se ha podido recordar
+ * la carpeta". En el navegador de escritorio colaba, y por eso las pruebas no lo detectaron:
+ * hacian falta datos reales en un movil para que apareciera.
  */
 export async function guardarCarpeta(carpeta: CarpetaElegida | null): Promise<void> {
   const db = await abrirBase()
@@ -100,12 +108,14 @@ export async function guardarCarpeta(carpeta: CarpetaElegida | null): Promise<vo
       const tx = db.transaction('carpeta-copia', 'readwrite')
       const almacen = tx.objectStore('carpeta-copia')
       if (carpeta) {
-        almacen.put(carpeta, CLAVE_CARPETA)
+        // La clave va dentro del objeto: el almacen usa clave propia.
+        almacen.put({ clave: CLAVE_CARPETA, carpeta })
       } else {
         almacen.delete(CLAVE_CARPETA)
       }
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
+      tx.onabort = () => reject(tx.error ?? new Error('transacción cancelada'))
     })
   } finally {
     db.close()
@@ -120,7 +130,16 @@ export async function leerCarpeta(): Promise<CarpetaElegida | null> {
       return await new Promise<CarpetaElegida | null>((resolve) => {
         const tx = db.transaction('carpeta-copia', 'readonly')
         const peticion = tx.objectStore('carpeta-copia').get(CLAVE_CARPETA)
-        peticion.onsuccess = () => resolve((peticion.result as CarpetaElegida) ?? null)
+        peticion.onsuccess = () => {
+          const guardado = peticion.result as { carpeta?: CarpetaElegida } | CarpetaElegida | undefined
+          if (!guardado) return resolve(null)
+          /*
+           * Se aceptan los dos formatos: el actual (con la clave dentro) y uno antiguo por si
+           * alguna version llego a guardarlo de otra forma. Asi nadie pierde su carpeta por un
+           * cambio de formato.
+           */
+          resolve('carpeta' in guardado ? (guardado.carpeta ?? null) : (guardado as CarpetaElegida))
+        }
         peticion.onerror = () => resolve(null)
       })
     } finally {
@@ -144,7 +163,12 @@ export async function leerCarpeta(): Promise<CarpetaElegida | null> {
  */
 export type ResultadoElegir = 'elegida' | 'cancelada' | 'no-guardada'
 
-export async function elegirCarpeta(): Promise<{ estado: ResultadoElegir; carpeta: CarpetaElegida | null }> {
+export async function elegirCarpeta(): Promise<{
+  estado: ResultadoElegir
+  carpeta: CarpetaElegida | null
+  /** Que ha fallado exactamente, si no se pudo recordar la carpeta. */
+  detalle?: string
+}> {
   const ventana = window as VentanaConCarpetas
   if (!ventana.showDirectoryPicker) return { estado: 'cancelada', carpeta: null }
 
@@ -159,8 +183,16 @@ export async function elegirCarpeta(): Promise<{ estado: ResultadoElegir; carpet
   try {
     await guardarCarpeta(carpeta)
     return { estado: 'elegida', carpeta }
-  } catch {
-    return { estado: 'no-guardada', carpeta: null }
+  } catch (error) {
+    /*
+     * Se devuelve el motivo, no solo que ha fallado.
+     *
+     * Al usuario le salia "no se ha podido recordar la carpeta" y ni el ni yo podiamos saber por
+     * que: el error se estaba tirando a la basura. Saber si es DataCloneError (el navegador no
+     * sabe guardar la carpeta) o NotFoundError (falta el almacen) es la diferencia entre poder
+     * arreglarlo y no poder.
+     */
+    return { estado: 'no-guardada', carpeta: null, detalle: nombreDeError(error) }
   }
 }
 

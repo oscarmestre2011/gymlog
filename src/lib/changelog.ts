@@ -37,6 +37,18 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.3.0',
+    fecha: '2026-09-16',
+    titulo: 'Perfil del deportista y arreglo de la carpeta de copias',
+    cambios: [
+      { tipo: 'nuevo', texto: 'Perfil del deportista: altura, fecha de nacimiento, sexo y cuánto te mueves al día. Con eso calcula tu edad (sola, desde la fecha), el IMC, la relación cintura/altura y una estimación de lo que gastas al día y de la proteína que te toca.' },
+      { tipo: 'mejora', texto: 'El peso NO se pide en el perfil: se coge de tu última medición corporal, así no hay dos sitios donde apuntarlo ni pueden contradecirse.' },
+      { tipo: 'mejora', texto: 'Si indicas tu porcentaje de grasa, la estimación pasa a usar una fórmula mejor (Katch-McArdle), que parte de tu masa magra.' },
+      { tipo: 'mejora', texto: 'La pantalla explica de dónde sale cada número y avisa de que son estimaciones, no un diagnóstico médico.' },
+      { tipo: 'arreglo', texto: 'La carpeta de las copias automáticas no se podía recordar en el móvil («no se ha podido recordar la carpeta»). Era un fallo de la app: la carpeta se guardaba de una forma que el navegador del móvil rechaza. Ya funciona, y si vuelve a fallar el aviso dice el motivo.' },
+    ],
+  },
+  {
     version: '1.2.0',
     fecha: '2026-09-16',
     titulo: 'Ejercicios plegables y cambio de ejercicio',
