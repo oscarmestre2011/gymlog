@@ -127,7 +127,7 @@ try {
 
   /* ------------------- 3. Se puede desactivar desde Ajustes ---------------- */
   console.log('\n--- 3. Desactivarlo desde Ajustes ---')
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(900)
   const ajustesTexto = await page.locator('body').innerText()
   check('Ajustes explica el estado de la pantalla', /Estado/.test(ajustesTexto) && /mantenida encendida/.test(ajustesTexto), ajustesTexto.match(/Estado[^\n]*\n[^\n]*/)?.[0]?.replace(/\n/g, ' ') ?? '')

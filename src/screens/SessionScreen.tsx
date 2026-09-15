@@ -12,6 +12,7 @@ import {
   updateSet,
   upsertExercise,
 } from '../db/repository'
+import { compararSerie } from '../lib/analisis'
 import { newId } from '../db'
 import type { NewSetInput } from '../App'
 import type { RestTimer } from '../hooks'
@@ -74,12 +75,15 @@ export function SessionScreen({
   onDiscard,
   onBackToApp,
   notify,
+  onVerAyuda,
 }: {
   session: Session
   sets: ExerciseSet[]
   settings: Settings
   /** Estado del cronometro de descanso; el tipo completo vive en hooks.ts. */
   rest: Pick<RestTimer, 'remaining' | 'total' | 'running' | 'start'>
+  /** Abre la ayuda, para resolver dudas sin salir del entrenamiento. */
+  onVerAyuda?: () => void
   onLogSet: (input: NewSetInput, restSeconds: number, etiqueta?: string) => Promise<void>
   onChanged: () => Promise<void>
   onFinish: () => Promise<void>
@@ -428,6 +432,11 @@ export function SessionScreen({
           >
             ☰
           </button>
+          {onVerAyuda ? (
+            <button className="btn ghost" onClick={onVerAyuda} aria-label="Ayuda" title="Ayuda e instrucciones">
+              ？
+            </button>
+          ) : null}
           <button className="btn ghost" onClick={() => setConfirmDiscard(true)} aria-label="Descartar sesión">
             🗑
           </button>
@@ -779,6 +788,12 @@ function ExerciseCard({
                 key={set.id}
                 set={set}
                 entry={entry}
+                /*
+                 * Las series del ULTIMO entrenamiento de este ejercicio: sirven para decir si esta
+                 * serie va mejor que la ultima vez. Se pasan ya calculadas desde aqui, que es donde
+                 * estan cargadas.
+                 */
+                anteriores={previous}
                 onSave={onSaveSet}
                 onRepeat={() => void onRepeat(set)}
                 onDelete={() => void onDeleteSet(entry, set)}
@@ -815,12 +830,15 @@ function ExerciseCard({
 function SetRow({
   set,
   entry,
+  anteriores = [],
   onSave,
   onRepeat,
   onDelete,
 }: {
   set: ExerciseSet
   entry: ExerciseEntry
+  /** Series del ultimo entrenamiento del mismo ejercicio, para comparar. */
+  anteriores?: ExerciseSet[]
   onSave: (
     entry: ExerciseEntry,
     data: { weight?: number; reps?: number; rir?: number; isWarmup?: boolean },
@@ -845,6 +863,9 @@ function SetRow({
   const commit = (valor?: number) => {
     void onSave(entry, { weight: valor ?? 0, reps: reps ?? 0, rir }, set, false)
   }
+
+  /** Si esta serie va mejor, igual o peor que la misma del ultimo entrenamiento. */
+  const comparacion = useMemo(() => compararSerie(set, anteriores), [set, anteriores])
 
   return (
     <div className={`set-row done${set.isWarmup ? ' warmup' : ''}`}>
@@ -884,6 +905,17 @@ function SetRow({
         series de dos ejercicios distintos en la misma sesion.
       */}
       {set.notes ? <div className="set-note">{set.notes}</div> : null}
+
+      {/*
+        Comparacion con la ultima vez que se hizo este ejercicio. Es la senal que dice, mientras
+        entrenas, si vas mejor: sin esto solo se sabe el peso de la ultima vez como referencia.
+        Solo se muestra cuando hay con que comparar y no es una serie de aproximacion.
+      */}
+      {!set.isWarmup && comparacion.senal !== 'sin-referencia' ? (
+        <div className={`set-mejora ${comparacion.senal}`} title="Comparado con la última vez">
+          {comparacion.texto}
+        </div>
+      ) : null}
     </div>
   )
 }

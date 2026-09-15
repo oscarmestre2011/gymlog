@@ -3,6 +3,17 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.4.0 — Ayuda, equilibrio muscular y compartir la copia
+
+_2026-09-16_
+
+- **Nuevo:** Ayuda e instrucciones: 22 preguntas con respuesta, agrupadas por temas y con buscador. Está en Ajustes, en la pantalla de Inicio y durante el entrenamiento (botón ？).
+- **Nuevo:** Volumen por grupo muscular: series por semana de cada grupo, para ver el equilibrio. Si un grupo se queda muy por detrás, avisa.
+- **Nuevo:** Fuerza y cardio juntos, semana a semana, con los días de actividad y los que hiciste las dos cosas.
+- **Nuevo:** Cada serie te dice si va mejor que la última vez (▲ +2,5 kg) o igual (=), mientras entrenas.
+- **Nuevo:** Compartir la copia de seguridad desde Inicio, con un toque (WhatsApp, correo, Drive). Así el archivo sale del móvil, que es lo único que protege de perderlo.
+- **Arreglado:** Progresión se caía entera al abrirla después de entrenar (un fallo técnico al dibujar la pantalla). Arreglado, y con una prueba que lo vigila.
+
 ## 1.3.1 — Las copias de seguridad, en un solo apartado
 
 _2026-09-16_

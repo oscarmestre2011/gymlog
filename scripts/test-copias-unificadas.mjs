@@ -33,7 +33,7 @@ async function abrir(page) {
     await page.waitForTimeout(900)
   }
   await page.waitForSelector('.nav', { timeout: 30000 })
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(1500)
 }
 

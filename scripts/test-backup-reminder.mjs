@@ -170,7 +170,7 @@ try {
   await preparar({ sesiones: 3, ultimaCopiaHace: 20, intervalo: 0 })
   await abrirInicio()
   check('Con el recordatorio desactivado no aparece', (await page.locator('.reminder').count()) === 0)
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(900)
   const ajustes = await page.locator('body').innerText()
   check('En Ajustes se ve que el recordatorio está desactivado', /Sin recordatorio/i.test(ajustes))

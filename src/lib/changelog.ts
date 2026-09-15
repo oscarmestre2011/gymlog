@@ -37,6 +37,19 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.4.0',
+    fecha: '2026-09-16',
+    titulo: 'Ayuda, equilibrio muscular y compartir la copia',
+    cambios: [
+      { tipo: 'nuevo', texto: 'Ayuda e instrucciones: 22 preguntas con respuesta, agrupadas por temas y con buscador. Está en Ajustes, en la pantalla de Inicio y durante el entrenamiento (botón ？).' },
+      { tipo: 'nuevo', texto: 'Volumen por grupo muscular: series por semana de cada grupo, para ver el equilibrio. Si un grupo se queda muy por detrás, avisa.' },
+      { tipo: 'nuevo', texto: 'Fuerza y cardio juntos, semana a semana, con los días de actividad y los que hiciste las dos cosas.' },
+      { tipo: 'nuevo', texto: 'Cada serie te dice si va mejor que la última vez (▲ +2,5 kg) o igual (=), mientras entrenas.' },
+      { tipo: 'nuevo', texto: 'Compartir la copia de seguridad desde Inicio, con un toque (WhatsApp, correo, Drive). Así el archivo sale del móvil, que es lo único que protege de perderlo.' },
+      { tipo: 'arreglo', texto: 'Progresión se caía entera al abrirla después de entrenar (un fallo técnico al dibujar la pantalla). Arreglado, y con una prueba que lo vigila.' },
+    ],
+  },
+  {
     version: '1.3.1',
     fecha: '2026-09-16',
     titulo: 'Las copias de seguridad, en un solo apartado',

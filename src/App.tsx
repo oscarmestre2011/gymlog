@@ -23,6 +23,7 @@ import { RoutinesScreen } from './screens/RoutinesScreen'
 import { ExerciseLibraryScreen } from './screens/ExerciseLibraryScreen'
 import { MeasurementsScreen } from './screens/MeasurementsScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
+import { Ayuda } from './screens/AyudaScreen'
 import { Novedades } from './components/Novedades'
 import { copiaAutomaticaSiToca } from './lib/copiaAutomatica'
 import { VERSIONES } from './lib/changelog'
@@ -93,6 +94,8 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
   const [verNovedades, setVerNovedades] = useState(false)
   /** Perfil del deportista: se entra desde Progresion y desde Ajustes. */
   const [verPerfil, setVerPerfil] = useState(false)
+  /** Ayuda e instrucciones: se entra desde Ajustes, desde Inicio y durante la sesion. */
+  const [verAyuda, setVerAyuda] = useState(false)
   /** El aviso de version nueva se mide para dejarle hueco y que no tape la cabecera. */
   const avisoRef = useRef<HTMLDivElement | null>(null)
 
@@ -328,6 +331,16 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
    * bloqueo de pantalla, la duracion del aviso) seguiria usando los valores antiguos hasta
    * recargar. Se detecto con la opcion de mantener la pantalla encendida.
    */
+  /**
+   * Vuelve a leer los ajustes de la base de datos.
+   *
+   * Hace falta cuando otra parte de la app los cambia por su cuenta (por ejemplo al anotar la
+   * fecha de la copia): asi la pantalla se entera sin recargar la app entera.
+   */
+  const recargarAjustes = useCallback(async () => {
+    setSettings(await getSettings())
+  }, [])
+
   const guardarAjustes = useCallback(
     async (patch: Partial<Settings>) => {
       await saveSettings(patch)
@@ -411,6 +424,23 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
     )
   }
 
+  if (verAyuda) {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <button className="icon-btn" onClick={() => setVerAyuda(false)} aria-label="Volver">
+            ←
+          </button>
+          <div className="grow">
+            <h1>Ayuda</h1>
+            <div className="sub">Instrucciones y preguntas frecuentes</div>
+          </div>
+        </header>
+        <Ayuda />
+      </div>
+    )
+  }
+
   if (verPerfil) {
     return (
       <div className="app">
@@ -471,12 +501,15 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
           onFinish={handleFinish}
           onDiscard={handleDiscard}
           onBackToApp={() => setViewingSession(false)}
+          onVerAyuda={() => setVerAyuda(true)}
           notify={notify}
         />
       ) : tab === 'inicio' ? (
         <HomeScreen
           key={`inicio-${refreshKey}`}
           settings={settings}
+          onVerAyuda={() => setVerAyuda(true)}
+          onSettingsChanged={recargarAjustes}
           onStart={handleStart}
           onOpenSession={async (id) => {
             const found = await getSession(id)
@@ -512,6 +545,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
             estadoPantalla={pantalla.estado}
             reintentarPantalla={pantalla.reintentar}
             onVerPerfil={() => setVerPerfil(true)}
+            onVerAyuda={() => setVerAyuda(true)}
           />
           )}
         </>

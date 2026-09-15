@@ -334,6 +334,27 @@ export async function listTrainedExercises(): Promise<{ id: string; name: string
   return [...map.values()].sort((a, b) => b.sets - a.sets)
 }
 
+/**
+ * Todo lo necesario para el analisis del entrenamiento (equilibrio, fuerza con cardio).
+ *
+ * Se lee de una vez y no en tres llamadas: son las tres tablas completas y asi se evita leerlas
+ * por separado y que puedan venir de momentos distintos.
+ */
+export async function getDatosDeAnalisis(): Promise<{
+  sessions: Session[]
+  sets: ExerciseSet[]
+  exercises: Exercise[]
+  cardio: CardioEntry[]
+}> {
+  const [sessions, sets, exercises, cardio] = await Promise.all([
+    db.sessions.toArray(),
+    db.sets.toArray(),
+    db.exercises.toArray(),
+    db.cardio.toArray(),
+  ])
+  return { sessions, sets, exercises, cardio }
+}
+
 /** Volumen total de trabajo por semana ISO, para ver tendencia. */
 export async function getWeeklyVolume(weeks = 8): Promise<{ weekStart: string; volume: number; sets: number }[]> {
   const sessions = await db.sessions.toArray()

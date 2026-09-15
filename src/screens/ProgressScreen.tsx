@@ -3,6 +3,7 @@ import {
   getExerciseHistory,
   getSettings,
   listMeasurements,
+  getDatosDeAnalisis,
   getPersonalRecords,
   getWeeklyVolume,
   listTrainedExercises,
@@ -10,6 +11,14 @@ import {
 import { useQuery } from '../hooks'
 import { formatKilograms, formatNumber, prettyDate, startOfWeekISO, todayISO } from '../lib/format'
 import { cinturaAltura, resumenDe, riesgoCinturaAltura } from '../lib/medidas'
+import {
+  desequilibrio,
+  diasConActividad,
+  resumenConstancia,
+  semanaCompleta,
+  volumenPorGrupo,
+  volumenSemanalPorGrupo,
+} from '../lib/analisis'
 import { edadDesde, gastoEnReposo, gastoTotal, imcPerfil } from '../lib/perfil'
 import { DEFAULT_SETTINGS } from '../types'
 import { summarizeSets } from '../components/ExercisePicker'
@@ -40,6 +49,11 @@ export function ProgressScreen({
   )
   const { data: records } = useQuery(() => getPersonalRecords(), [])
   const { data: weekly } = useQuery(() => getWeeklyVolume(8), [])
+  /*
+   * Datos para el equilibrio muscular y para ver fuerza y cardio juntos. Se cargan de una vez
+   * (son tres tablas completas) y de aqui salen las dos secciones nuevas.
+   */
+  const { data: analisis } = useQuery(() => getDatosDeAnalisis(), [])
 
   const rows = useMemo(() => (history ?? []).slice().reverse(), [history])
   const chart = useMemo(() => (history ?? []).slice(-10), [history])
@@ -49,6 +63,42 @@ export function ProgressScreen({
     if (all.length === 0) return null
     return all.reduce((top, item) => (item.best1RM > top.best1RM ? item : top))
   }, [history])
+
+  /*
+   * OJO: estos calculos van ANTES de los `return` tempranos, y no despues.
+   *
+   * Un `useMemo` despues de un return temprano rompe la pantalla entera: en el primer render (sin
+   * datos) hay menos hooks que en el siguiente (con datos), React lo detecta y lanza el error 310
+   * ("mas hooks que en el render anterior"). Se descubrio con una prueba: al apuntar una sesion y
+   * abrir Progresion, la pantalla se caia entera con el cartel de "algo ha ido mal".
+   *
+   * REGLA: los hooks siempre antes de cualquier return.
+   */
+
+  /* -------------------- analisis: equilibrio y semana completa -------------------- */
+
+  const semanas = useMemo(
+    () => (analisis ? semanaCompleta(analisis.sessions, analisis.sets, analisis.cardio, 8) : []),
+    [analisis],
+  )
+  const tablaGrupos = useMemo(
+    () =>
+      analisis
+        ? volumenSemanalPorGrupo(analisis.sets, analisis.sessions, analisis.exercises, 4)
+        : { semanas: [], grupos: [] },
+    [analisis],
+  )
+  const grupos = tablaGrupos.grupos
+  const semanasGrupos = tablaGrupos.semanas
+  const avisoDesequilibrio = useMemo(
+    () => desequilibrio(volumenPorGrupo(analisis?.sets ?? [], analisis?.sessions ?? [], analisis?.exercises ?? [])),
+    [analisis],
+  )
+  const constancia = useMemo(
+    () => (analisis ? resumenConstancia(diasConActividad(analisis.sessions, analisis.cardio, 60)) : null),
+    [analisis],
+  )
+
 
   if (loading) return <div className="screen"><div className="spinner" /></div>
 
@@ -190,6 +240,110 @@ export function ProgressScreen({
                 </div>
               ))}
           </div>
+        </div>
+      ) : null}
+
+      {/* ------------------- fuerza y cardio, la semana completa --------------- */}
+      {semanas.length > 0 ? (
+        <div className="card">
+          <h2 className="card-title">Fuerza y cardio, juntos</h2>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            La semana entera de un vistazo. Antes estaban en sitios distintos y quien hace las dos
+            cosas no podía ver la carga completa.
+          </p>
+          <div className="table-wrap">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>Semana</th>
+                  <th className="num">Fuerza</th>
+                  <th className="num">Series</th>
+                  <th className="num">Cardio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {semanas
+                  .slice()
+                  .reverse()
+                  .map((s) => (
+                    <tr key={s.weekStart}>
+                      <td>
+                        {prettyDate(s.weekStart)}
+                        {s.weekStart === startOfWeekISO(todayISO()) ? <span className="badge"> actual</span> : null}
+                      </td>
+                      <td className="num">{s.volumen > 0 ? formatKilograms(s.volumen) : '—'}</td>
+                      <td className="num">
+                        {s.series}
+                        {s.sesiones > 0 ? <span className="tiny muted"> · {s.sesiones} ses.</span> : null}
+                      </td>
+                      <td className="num">
+                        {s.cardioVeces > 0 ? (
+                          <>
+                            {formatNumber(s.cardioMin)} min
+                            {s.cardioKm > 0 ? <span className="tiny muted"> · {formatNumber(s.cardioKm, 1)} km</span> : null}
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+          {constancia ? (
+            <p className="tiny muted" style={{ marginTop: 10, marginBottom: 0 }}>
+              En las últimas 4 semanas: <b>{constancia.diasActivos} días</b> con actividad
+              {constancia.ambos > 0 ? `, de ellos ${constancia.ambos} con fuerza y cardio el mismo día` : ''}
+              {constancia.soloCardio > 0 ? ` · ${constancia.soloCardio} solo cardio` : ''}
+              {constancia.soloFuerza > 0 ? ` · ${constancia.soloFuerza} solo fuerza` : ''}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* -------------------- volumen por grupo muscular ---------------------- */}
+      {grupos.length > 0 ? (
+        <div className="card">
+          <h2 className="card-title">Volumen por grupo muscular</h2>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Series de trabajo por semana en las últimas {semanasGrupos.length}. Sirve para ver el
+            equilibrio: si un grupo se queda muy por detrás, se está entrenando poco o se está
+            saltando. Las series de aproximación no cuentan.
+          </p>
+
+          {avisoDesequilibrio ? (
+            <p className="small warn" style={{ marginTop: 0 }}>
+              Ojo con el equilibrio: <b>{avisoDesequilibrio.grupoAlto}</b> lleva{' '}
+              {avisoDesequilibrio.seriesAlto} series y <b>{avisoDesequilibrio.grupoBajo}</b> solo{' '}
+              {avisoDesequilibrio.seriesBajo}. Si no es a propósito, conviene igualarlo.
+            </p>
+          ) : null}
+
+          <div className="tabla-grupos">
+            {grupos.map((g) => {
+              const maximo = Math.max(...grupos.map((x) => x.total))
+              return (
+                <div key={g.grupo} className="fila-grupo">
+                  <span className="nombre">{g.grupo}</span>
+                  <span className="barra">
+                    <span
+                      className="relleno"
+                      style={{ width: `${maximo > 0 ? (g.total / maximo) * 100 : 0}%` }}
+                    />
+                  </span>
+                  <span className="valor">{g.total}</span>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="tiny muted" style={{ marginTop: 10, marginBottom: 0 }}>
+            Total de series por grupo en las últimas {semanasGrupos.length}. Como referencia, quien
+            entrena fuerza suele moverse entre 10 y 20 series por grupo y semana; no es una norma
+            rígida, sirve sobre todo para comparar tus grupos entre sí.
+          </p>
         </div>
       ) : null}
 

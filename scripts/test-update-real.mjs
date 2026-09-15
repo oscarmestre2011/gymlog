@@ -219,7 +219,7 @@ try {
   )
 
   console.log('\n6) Que version dice la pantalla de Ajustes')
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(1000)
   const ajustes = await page.locator('body').innerText()
   check('Ajustes muestra la version nueva', ajustes.includes(versionActual), `esperado ${versionActual}`)

@@ -393,6 +393,29 @@ select.input {
   padding: 3px 0;
 }
 
+/* Senal de mejora: "van mejor que la ultima vez". Ocupa todo el ancho, bajo la serie. */
+.set-mejora {
+  grid-column: 1 / -1;
+  font-size: 0.72rem;
+  padding: 1px 0 3px;
+  font-weight: 600;
+}
+
+.set-mejora.mejor {
+  color: var(--accent);
+}
+
+.set-mejora.igual {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+/* Peor se muestra en un tono neutro, no en rojo: bajar un dia no es un fallo. */
+.set-mejora.peor {
+  color: var(--warn);
+  font-weight: 500;
+}
+
 /* Nota de la serie, debajo y ocupando todo el ancho (por ejemplo "Cambiado desde X"). */
 .set-note {
   grid-column: 1 / -1;

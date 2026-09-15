@@ -28,6 +28,20 @@ Ultima revision: 16 de septiembre de 2026, con la version **1.1.0** publicada.
 
 ---
 
+## Reglas aprendidas (para no repetir fallos)
+
+- **Un `useMemo` (o cualquier hook) NUNCA despues de un `return` temprano.** Rompe la pantalla
+  entera con el error 310 de React. Paso de verdad en Progresion: se caia completa al abrirla
+  despues de entrenar. Hay una prueba que lo vigila: `src/screens/hooks.test.tsx`, y se comprobo
+  que de verdad lo pilla.
+- **Nada de nombres escritos a mano en las pruebas** (versiones, nombres de cache): caducan y dan
+  fallos que parecen de la app. Ya paso con `gymlog-v6` y con el numero de version.
+- **Ojo con los textos que se repiten en varios botones.** Ya ha pasado tres veces (dos "Cada mes",
+  dos "Ajustes", y "←" frente a "Volver"): las pruebas tienen que acotar el selector (por ejemplo
+  `.nav button`), y si dos botones hacen cosas distintas, se les pone nombre distinto.
+- **Los errores no se tiran a la basura.** Si algo falla, se dice QUE ha fallado. El fallo de la
+  carpeta de copias estuvo escondido por un mensaje generico.
+
 ## Pendiente
 
 ### 1. Revisar el historial de versiones

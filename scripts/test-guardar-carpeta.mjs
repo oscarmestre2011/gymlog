@@ -148,7 +148,7 @@ try {
       }),
     })
   })
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(1200)
   await page.getByRole('button', { name: /Elegir carpeta/i }).click()
   await page.waitForTimeout(2000)

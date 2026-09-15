@@ -134,7 +134,7 @@ try {
 
   /* ------------------- 6. Y en Ajustes hay acceso -------------------- */
   console.log('\n--- 6. Acceso desde Ajustes ---')
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(1200)
   const ajustes = await page.locator('body').innerText()
   check('Ajustes remite al perfil del deportista', /Perfil del deportista/i.test(ajustes))

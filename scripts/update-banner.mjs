@@ -81,7 +81,32 @@ try {
   check('Ofrece un boton para actualizar', await page.locator('.update-banner button', { hasText: 'Actualizar' }).isVisible())
   check('Se puede descartar', await page.locator('.update-banner .icon-btn').isVisible())
 
-  // El aviso no debe tapar la cabecera de la app.
+  /*
+   * El aviso no debe tapar la cabecera de la app.
+   *
+   * DOS DETALLES QUE HACEN FALSA ESTA COMPROBACION, y que costaron un rato:
+   *
+   * 1. Hay que volver ARRIBA antes de medir. Si la pagina esta desplazada, la cabecera (que va
+   *    pegada) sube hasta el borde de la pantalla y el aviso la tapa: eso es correcto y esperado.
+   *    Al volver arriba, la cabecera queda por debajo del aviso.
+   * 2. Hay que esperar a que el hueco se aplique: el alto del aviso lo mide un efecto de React y
+   *    se publica como variable CSS, asi que medir al instante es una carrera.
+   */
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await page.waitForTimeout(400)
+  await page
+    .waitForFunction(
+      () => {
+        const app = document.querySelector('.app')
+        const topbar = document.querySelector('.topbar')
+        if (!app || !topbar) return false
+        const hueco = parseFloat(getComputedStyle(app).paddingTop) || 0
+        return hueco > 0 && Math.round(topbar.getBoundingClientRect().y) >= hueco - 1
+      },
+      { timeout: 4000 },
+    )
+    .catch(() => undefined)
+
   const topbarBox = await page.locator('.topbar').boundingBox()
   const bannerBox = await page.locator('.update-banner').boundingBox()
   check(

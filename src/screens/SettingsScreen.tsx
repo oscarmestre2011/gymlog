@@ -37,6 +37,7 @@ export function SettingsScreen({
   estadoPantalla = 'inactivo',
   reintentarPantalla,
   onVerPerfil,
+  onVerAyuda,
 }: {
   settings: Settings
   onSave: (patch: Partial<Settings>) => Promise<void>
@@ -46,6 +47,8 @@ export function SettingsScreen({
   reintentarPantalla?: () => void
   /** Abre la pantalla del perfil del deportista. */
   onVerPerfil?: () => void
+  /** Abre la ayuda y las instrucciones. */
+  onVerAyuda?: () => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [pendingImport, setPendingImport] = useState<BackupFile | null>(null)
@@ -171,6 +174,20 @@ export function SettingsScreen({
 
   return (
     <div className="screen">
+      {/* -------------------------------- ayuda -------------------------------- */}
+      <div className="card">
+        <h2 className="card-title">Ayuda</h2>
+        <p className="small muted" style={{ marginTop: 0 }}>
+          Instrucciones y respuestas a las dudas más habituales: cómo instalarla, cómo apuntar una
+          serie, cómo funcionan las superseries, cómo hacer copia de seguridad…
+        </p>
+        {onVerAyuda ? (
+          <button className="btn block" onClick={onVerAyuda}>
+            📖 Ver la ayuda y las instrucciones
+          </button>
+        ) : null}
+      </div>
+
       {/* ------------------------------- descanso ------------------------------ */}
       <div className="card">
         <h2 className="card-title">Descanso</h2>
@@ -596,7 +613,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.3.1</span>
+          <span className="v">1.4.0</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

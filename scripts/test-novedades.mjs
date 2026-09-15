@@ -47,7 +47,7 @@ try {
   page.on('pageerror', (e) => errores.push(String(e).split('\n')[0]))
 
   await abrir(page)
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(1200)
 
   const ajustes = await page.locator('body').innerText()
@@ -152,7 +152,7 @@ try {
   const context = await browserWebkit.newContext({ ...devices['iPhone 13'], locale: 'es-ES' })
   const page = await context.newPage()
   await abrir(page)
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(1500)
   const texto = await page.locator('body').innerText()
 

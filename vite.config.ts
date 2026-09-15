@@ -34,6 +34,9 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['src/db/**/*.test.ts', 'jsdom'],
       ['src/components/**/*.test.tsx', 'jsdom'],
+      // Las pantallas enteras tambien: se dibujan para comprobar que no rompen las reglas de los
+      // hooks (un useMemo despues de un return temprano tira la pantalla completa).
+      ['src/screens/**/*.test.tsx', 'jsdom'],
     ],
   },
 } as never)

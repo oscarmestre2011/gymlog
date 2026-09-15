@@ -354,7 +354,7 @@ try {
   await page.waitForTimeout(800)
 
   /* ------------------------------ 8. ajustes ----------------------------- */
-  await page.getByRole('button', { name: /Ajustes/ }).click()
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(400)
   const settingsText = await page.locator('body').innerText()
   check('Los ajustes explican dónde viven los datos', settingsText.includes('IndexedDB'))
