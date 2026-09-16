@@ -3,13 +3,27 @@ import {
   getExerciseHistory,
   getSettings,
   listMeasurements,
+  deleteSession,
   getDatosDeAnalisis,
   getPersonalRecords,
+  getStats,
+  listSessions,
+  listSets,
   getWeeklyVolume,
   listTrainedExercises,
 } from '../db/repository'
+import { ConfirmDialog } from '../components/Modal'
+import { exerciseSummary } from '../lib/format'
 import { useQuery } from '../hooks'
-import { formatKilograms, formatNumber, prettyDate, startOfWeekISO, todayISO } from '../lib/format'
+import {
+  formatDuration,
+  formatKilograms,
+  formatKilometers,
+  formatNumber,
+  prettyDate,
+  startOfWeekISO,
+  todayISO,
+} from '../lib/format'
 import { cinturaAltura, resumenDe, riesgoCinturaAltura } from '../lib/medidas'
 import {
   desequilibrio,
@@ -54,6 +68,10 @@ export function ProgressScreen({
    * (son tres tablas completas) y de aqui salen las dos secciones nuevas.
    */
   const { data: analisis } = useQuery(() => getDatosDeAnalisis(), [])
+  /** Se incrementa al borrar algo, para que las consultas se vuelvan a hacer. */
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [porBorrar, setPorBorrar] = useState<string | null>(null)
+  const { data: sesiones } = useQuery(() => listSessions(8), [refreshKey], [])
 
   const rows = useMemo(() => (history ?? []).slice().reverse(), [history])
   const chart = useMemo(() => (history ?? []).slice(-10), [history])
@@ -94,6 +112,7 @@ export function ProgressScreen({
     () => desequilibrio(volumenPorGrupo(analisis?.sets ?? [], analisis?.sessions ?? [], analisis?.exercises ?? [])),
     [analisis],
   )
+  const { data: totales } = useQuery(() => getStats(), [refreshKey], undefined)
   const constancia = useMemo(
     () => (analisis ? resumenConstancia(diasConActividad(analisis.sessions, analisis.cardio, 60)) : null),
     [analisis],
@@ -122,6 +141,35 @@ export function ProgressScreen({
 
   return (
     <div className="screen">
+      {/* ----------------------------- totales -------------------------------- */}
+      {/*
+        Los totales generales. Estaban en la portada, que se limpio para dejar solo el
+        entrenamiento del dia: aqui es donde se consultan, junto al resto del progreso.
+      */}
+      {totales ? (
+        <div className="stats">
+          <div className="stat">
+            <div className="value">{totales.sessions}</div>
+            <div className="label">Sesiones</div>
+          </div>
+          <div className="stat">
+            <div className="value">{formatKilograms(totales.volume)}</div>
+            <div className="label">Volumen total</div>
+          </div>
+          <div className="stat">
+            <div className="value">{formatKilometers(totales.cardioKm)}</div>
+            <div className="label">Cardio acumulado</div>
+          </div>
+          <div className="stat">
+            <div className="value">
+              {totales.streakWeeks}
+              <span className="small muted" style={{ fontWeight: 500 }}> sem</span>
+            </div>
+            <div className="label">Racha seguida</div>
+          </div>
+        </div>
+      ) : null}
+
       {/* ------------------------ perfil y medidas ------------------------------ */}
       <ResumenPerfil onVer={onVerPerfil} />
       <ResumenMedidas onVer={onVerMedidas} />
@@ -218,6 +266,43 @@ export function ProgressScreen({
             </table>
           </div>
         </div>
+      ) : null}
+
+      {/* --------------------------- sesiones pasadas -------------------------- */}
+      {(sesiones?.length ?? 0) > 0 ? (
+        <div className="card">
+          <h2 className="card-title">Sesiones guardadas</h2>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Las últimas {sesiones?.length ?? 0}. Toca la papelera para borrar una.
+          </p>
+          <div className="list">
+            {sesiones?.map((s) => (
+              <SesionRow
+                key={s.id}
+                sessionId={s.id}
+                date={s.date}
+                routineName={s.routineName}
+                startedAt={s.startedAt}
+                endedAt={s.endedAt}
+                onDelete={() => setPorBorrar(s.id)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {porBorrar ? (
+        <ConfirmDialog
+          title="Borrar sesión"
+          message="Se borrarán también las series de esa sesión. No se puede deshacer."
+          confirmLabel="Borrar"
+          onConfirm={async () => {
+            await deleteSession(porBorrar)
+            setPorBorrar(null)
+            setRefreshKey((k) => k + 1)
+          }}
+          onCancel={() => setPorBorrar(null)}
+        />
       ) : null}
 
       {/* ---------------------------- volumen semanal --------------------------- */}
@@ -543,6 +628,61 @@ function ResumenMedidas({ onVer }: { onVer?: () => void }) {
           Ver todas las medidas
         </button>
       ) : null}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Una sesion pasada, con su resumen y la opcion de borrarla.
+ *
+ * Vivia en la pantalla de Inicio, en la lista de "ultimas sesiones". Al limpiar Inicio se ha traido
+ * aqui: el historial de entrenamientos es de Progresion, y ademas asi no se pierde la opcion de
+ * borrar una sesion equivocada.
+ */
+function SesionRow({
+  sessionId,
+  date,
+  routineName,
+  startedAt,
+  endedAt,
+  onDelete,
+}: {
+  sessionId: string
+  date: string
+  routineName: string
+  startedAt: number
+  endedAt: number | null
+  onDelete: () => void
+}) {
+  const { data: sets } = useQuery(() => listSets(sessionId), [sessionId], [])
+  const list = sets ?? []
+  const volume = list.filter((s) => !s.isWarmup).reduce((acc, s) => acc + s.weight * s.reps, 0)
+  const duration = endedAt ? Math.round((endedAt - startedAt) / 1000) : null
+
+  return (
+    <div className="list-item">
+      <div className="main">
+        <div className="title">{routineName}</div>
+        <div className="meta">
+          {prettyDate(date)}
+          {duration ? ` · ${formatDuration(duration)}` : ''}
+          {list.length > 0 ? ` · ${list.length} series` : ''}
+          {volume > 0 ? ` · ${formatKilograms(volume)}` : ''}
+        </div>
+        {list.length > 0 ? (
+          <div
+            className="tiny muted"
+            style={{ marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          >
+            {exerciseSummary(list)}
+          </div>
+        ) : null}
+      </div>
+      <button className="icon-btn danger" onClick={onDelete} aria-label="Borrar sesión">
+        🗑
+      </button>
     </div>
   )
 }

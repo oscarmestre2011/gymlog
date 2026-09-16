@@ -113,7 +113,10 @@ const SEED_ROUTINES: {
   code: string
   name: string
   description: string
+  /** Etiqueta de texto que se muestra en la tarjeta. */
   weekday: string
+  /** Dia de la semana de verdad (0 = domingo). Es lo que usa la planificacion. */
+  weekdays: number[]
   isDefault?: boolean
   exercises: (Omit<RoutineExercise, 'exerciseId' | 'name'> & { name: string })[]
 }[] = [
@@ -122,6 +125,7 @@ const SEED_ROUTINES: {
     name: 'Fuerza A — Empuje + Pierna',
     description: 'Empuje dominante con sentadilla y press banca como básicos. Día de referencia: lunes.',
     weekday: 'Lunes',
+    weekdays: [1],
     isDefault: true,
     exercises: [
       { name: 'Back squat', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, restSeconds: 150, notes: 'En la práctica se han hecho 4×10-12' },
@@ -139,6 +143,7 @@ const SEED_ROUTINES: {
     name: 'Fuerza B — Tracción + Posterior',
     description: 'Cadena posterior y tracción. Día de referencia: miércoles.',
     weekday: 'Miércoles',
+    weekdays: [3],
     exercises: [
       { name: 'Peso muerto rumano', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, restSeconds: 120 },
       { name: 'Jalón polea', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, restSeconds: 90, notes: 'Serie tope a 60 kg' },
@@ -154,6 +159,7 @@ const SEED_ROUTINES: {
     name: 'Fuerza C — Full Body + Core',
     description: 'Cuerpo completo con dos básicos pesados y core. Día de referencia: viernes.',
     weekday: 'Viernes',
+    weekdays: [5],
     exercises: [
       { name: 'Sentadilla frontal', targetSets: 4, targetRepsMin: 8, targetRepsMax: 10, restSeconds: 150 },
       { name: 'Peso muerto convencional', targetSets: 4, targetRepsMin: 6, targetRepsMax: 8, restSeconds: 150 },
@@ -171,6 +177,7 @@ const SEED_MOBILITY: (typeof SEED_ROUTINES)[number] = {
   name: 'Movilidad y core en casa',
   description: 'Día suave: movilidad, core y activación. 15-20 minutos.',
   weekday: 'Cualquier día',
+  weekdays: [],
   exercises: [
     { name: 'Plancha', targetSets: 3, targetRepsMin: 30, targetRepsMax: 45, restSeconds: 45, notes: 'Segundos' },
     { name: 'Puente de glúteos', targetSets: 3, targetRepsMin: 15, targetRepsMax: 20, restSeconds: 45 },
@@ -239,6 +246,7 @@ export async function seedIfEmpty(force = false): Promise<{ exercises: number; r
     return {
       id: newId('r_'),
       code: seed.code,
+      weekdays: seed.weekdays,
       name: seed.name,
       description: seed.description,
       exercises: routineExercises,

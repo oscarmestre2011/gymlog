@@ -120,12 +120,12 @@ try {
   await esperarApp(page, 20000)
   await page.waitForTimeout(700)
   const homeText = await page.locator('body').innerText()
-  check('La app arranca servida desde /gymlog/', homeText.includes('Empezar entrenamiento'))
+  check('La app arranca servida desde /gymlog/', homeText.includes('Hoy es'))
   check('No hay peticiones que devuelvan error', notFound.length === 0, notFound.slice(0, 3).join(' | '))
   check('No hay errores de JavaScript', jsErrors.length === 0, jsErrors.join(' | '))
 
   /* 3. Runner completo: empezar sesion y apuntar una serie bajo la subcarpeta */
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 8000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza C' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 8000 })

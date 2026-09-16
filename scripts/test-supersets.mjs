@@ -52,9 +52,9 @@ try {
 
   /* ---------------------- 1. Crear una superserie ------------------------ */
   console.log('\n--- 1. Crear una superserie en el editor ---')
-  await page.getByRole('button', { name: /Rutinas/ }).click()
+  await page.locator('.nav button', { hasText: 'Rutinas' }).click()
   await page.waitForTimeout(900)
-  await page.locator('.card', { hasText: 'Fuerza A' }).first().getByRole('button', { name: /Editar/ }).click()
+  await page.locator('.card.routine-card', { hasText: 'Fuerza A' }).first().getByRole('button', { name: /Editar/ }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.waitForTimeout(600)
 
@@ -94,9 +94,9 @@ try {
 
   /* ------------------- 2. La sesión la muestra agrupada ------------------ */
   console.log('\n--- 2. La sesión muestra la superserie ---')
-  await page.getByRole('button', { name: /Inicio/ }).click()
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
   await page.waitForTimeout(700)
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 15000 })

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Routine, RoutineExercise } from '../types'
+import { avisosDelPlan, diasDeRutina, nombreCortoDelDia, planSemanal, textoDeDias } from '../lib/planificacion'
 import {
   TRANSICION_POR_DEFECTO,
   groupRoutineExercises,
@@ -47,6 +48,41 @@ export function RoutinesScreen({
         ＋ Nueva rutina
       </button>
 
+      {/*
+        PLAN DE LA SEMANA: que rutina toca cada dia. Sirve para ver los huecos y los dias
+        repetidos de un vistazo, y para comprobar que la planificacion es la que se quiere (los
+        dias se eligen al editar cada rutina).
+      */}
+      {(routines?.length ?? 0) > 0 ? (
+        <div className="card">
+          <h2 className="card-title" style={{ marginTop: 0 }}>
+            Tu semana
+          </h2>
+          <div className="plan-semana">
+            {planSemanal(routines ?? []).map((dia) => (
+              <div key={dia.dia} className={`plan-dia${dia.rutinas.length === 0 ? ' vacio' : ''}`}>
+                <span className="plan-nombre">{dia.corto}</span>
+                <span className="plan-rutinas">
+                  {dia.rutinas.length === 0
+                    ? '—'
+                    : dia.rutinas.map((r) => `${r.code ? `${r.code} · ` : ''}${r.name}`).join(' + ')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {avisosDelPlan(routines ?? []).map((aviso) => (
+            <p key={aviso} className="tiny warn" style={{ margin: '8px 0 0' }}>
+              {aviso}
+            </p>
+          ))}
+
+          <p className="tiny muted" style={{ margin: '10px 0 0' }}>
+            Cada rutina tiene sus días: se eligen dentro de ella, con la ✎ de su tarjeta. En Inicio aparecerá la que toque ese día.
+          </p>
+        </div>
+      ) : null}
+
       <p className="tiny muted" style={{ margin: 0 }}>
         ¿Te falta algún ejercicio? Se añaden desde{' '}
         <button
@@ -67,7 +103,7 @@ export function RoutinesScreen({
       ) : null}
 
       {routines?.map((routine) => (
-        <div key={routine.id} className="card">
+        <div key={routine.id} className="card routine-card">
           <div className="row between" style={{ alignItems: 'flex-start' }}>
             <div className="grow">
               <div style={{ fontWeight: 700 }}>
@@ -296,10 +332,52 @@ function RoutineEditor({
         <input
           id="r-desc"
           className="input"
-          placeholder="Lunes, empuje + pierna…"
+          placeholder="Empuje dominante con sentadilla y press banca…"
           value={draft.description ?? ''}
           onChange={(e) => setDraft({ ...draft, description: e.target.value })}
         />
+      </div>
+
+      {/*
+        DIAS DE LA RUTINA. Antes los dias estaban escritos a mano en el programa (A lunes, B
+        miercoles, C viernes), asi que no habia forma de cambiarlos. Ahora se eligen aqui, y la
+        pantalla de Inicio propone la rutina que toca ese dia.
+      */}
+      <div className="field" style={{ marginTop: 14 }}>
+        <label>¿Qué días toca?</label>
+        <div className="row wrap" style={{ gap: 6 }}>
+          {[1, 2, 3, 4, 5, 6, 0].map((dia) => {
+            const puesto = diasDeRutina(draft).includes(dia)
+            return (
+              <button
+                key={dia}
+                className={`chip${puesto ? ' active' : ''}`}
+                onClick={() =>
+                  setDraft((d) => {
+                    const actuales = diasDeRutina(d)
+                    const siguientes = puesto
+                      ? actuales.filter((x) => x !== dia)
+                      : [...actuales, dia]
+                    return {
+                      ...d,
+                      weekdays: siguientes,
+                      // Se mantiene la etiqueta de texto en consonancia, para la tarjeta.
+                      weekday: siguientes.length === 0 ? 'Cualquier día' : textoDeDias({ ...d, weekdays: siguientes }),
+                    }
+                  })
+                }
+                aria-pressed={puesto}
+              >
+                {nombreCortoDelDia(dia)}
+              </button>
+            )
+          })}
+        </div>
+        <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+          {diasDeRutina(draft).length === 0
+            ? 'Sin días: no se propondrá sola en Inicio. Puedes empezarla a mano cuando quieras.'
+            : 'Ese día aparecerá en Inicio como el entrenamiento que toca. Puedes marcar varios días.'}
+        </p>
       </div>
 
       <div className="section-head" style={{ marginTop: 18 }}>

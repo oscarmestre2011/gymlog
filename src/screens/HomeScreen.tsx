@@ -6,29 +6,24 @@ import {
   getStats,
   listCardio,
   listRoutines,
-  listSessions,
   listSets,
 } from '../db/repository'
 import { useQuery } from '../hooks'
+import { diaDeLaFecha, rutinasDelDia } from '../lib/planificacion'
 import { listMeasurements } from '../db/repository'
 import { MeasurementReminder } from '../components/MeasurementReminder'
-import { descargarCopiaDeSeguridad, compartirCopiaDeSeguridad, puedeCompartirArchivos } from '../lib/descargar'
+import { descargarCopiaDeSeguridad, compartirCopiaDeSeguridad } from '../lib/descargar'
 import { BackupReminder } from '../components/BackupReminder'
 import { ConfirmDialog } from '../components/Modal'
 import { RoutinePicker } from '../components/RoutinePicker'
 import {
-  exerciseSummary,
   formatDuration,
-  formatKilograms,
   formatKilometers,
   prettyDate,
   todayISO,
   weekdayName,
 } from '../lib/format'
 import type { Tab } from '../App'
-
-/** Dia de la semana (0 = domingo) que le toca a cada rutina del programa A/B/C. */
-const ROUTINE_WEEKDAY: Record<string, number> = { A: 1, B: 3, C: 5 }
 
 export function HomeScreen({
   settings,
@@ -37,7 +32,7 @@ export function HomeScreen({
   onGoTo,
   notify,
   onVerAyuda,
-  onSettingsChanged,
+  onGuardarAjuste,
 }: {
   /** Ajustes actuales, gestionados por la app para que un cambio se refleje al momento. */
   settings: Settings
@@ -48,26 +43,18 @@ export function HomeScreen({
   /** Abre la ayuda e instrucciones. */
   onVerAyuda: () => void
   /**
-   * Avisa a la app de que los ajustes han cambiado por debajo (por ejemplo al anotar la fecha de
-   * la copia). Sin esto, el estado de "ultima copia" se quedaria viejo hasta recargar.
+   * Guarda un ajuste por el camino de siempre (el de la app). Se usa para anotar la fecha de la
+   * copia: asi la pantalla se entera al momento y no hay dos caminos que puedan contradecirse.
    */
-  onSettingsChanged: () => void
+  onGuardarAjuste: (patch: Partial<Settings>) => Promise<void>
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [copiando, setCopiando] = useState(false)
 
   const { data: routines } = useQuery(() => listRoutines(), [])
 
-  /** Dias desde la ultima copia, para poder decirlo en Inicio. */
-  const copiadoHace =
-    settings.lastBackupAt != null
-      ? Math.floor((Date.now() - settings.lastBackupAt) / 86400000)
-      : null
-  /** Si el navegador sabe compartir archivos y, si no, se descarga (nunca se queda sin copia). */
   const { data: stats } = useQuery(() => getStats(), [refreshKey])
-  const { data: sessions } = useQuery(() => listSessions(8), [refreshKey])
   const { data: cardio } = useQuery(() => listCardio(3), [refreshKey])
   const { data: mediciones } = useQuery(() => listMeasurements(), [refreshKey], [])
   const { data: active } = useQuery(() => getActiveSession(), [refreshKey])
@@ -79,36 +66,24 @@ export function HomeScreen({
 
   const today = todayISO()
   const todayName = weekdayName(today)
-  const suggested = useMemo(() => {
-    const weekday = new Date().getDay()
-    const list = routines ?? []
-    const byCode = list.find((r) => ROUTINE_WEEKDAY[r.code ?? ''] === weekday)
-    if (byCode) return byCode
-    // Si hoy no toca rutina, propone la de la rutina por defecto (Fuerza A).
-    return list.find((r) => r.isDefault) ?? list[0]
-  }, [routines])
+  const diaDeHoy = diaDeLaFecha(today)
 
-  const recentSummaries = useMemo(() => sessions ?? [], [sessions])
+  /*
+   * Los entrenamientos PLANIFICADOS para hoy.
+   *
+   * Sale de los dias que tenga puestas cada rutina (se eligen al editarla), no de una lista escrita
+   * en el programa como antes. Si no hay nada programado para hoy se dice, en vez de proponer una
+   * rutina cualquiera: proponer la equivocada es peor que no proponer nada.
+   */
+  const planificadas = useMemo(() => rutinasDelDia(routines ?? [], diaDeHoy), [routines, diaDeHoy])
+
 
   return (
     <div className="screen">
       {/*
-        Aviso de copia de seguridad, arriba del todo. Los datos viven solo en este movil:
-        si se borran los datos del navegador no hay forma de recuperarlos sin una copia.
+        El ENTRENAMIENTO DEL DIA va primero: es lo unico que tiene que resolver esta pantalla.
+        Los avisos (copia y medidas) van despues, y solo aparecen cuando hay algo que decir.
       */}
-      <BackupReminder
-        settings={settings}
-        hayDatos={(stats?.sessions ?? 0) > 0 || (stats?.sets ?? 0) > 0 || (stats?.cardioKm ?? 0) > 0}
-        onDescargar={async () => {
-          await descargarCopiaDeSeguridad()
-          notify('Copia descargada: guárdala en un sitio seguro')
-          setRefreshKey((k) => k + 1)
-        }}
-      />
-
-      {/* Aviso de que toca medirse: cada dos semanas, que es su ritmo real. */}
-      <MeasurementReminder mediciones={mediciones ?? []} onVer={() => onGoTo('progreso')} />
-
       {/* ------------------------------ sesion ------------------------------ */}
       {active ? (
         <div className="card" style={{ borderColor: 'var(--accent)' }}>
@@ -125,159 +100,122 @@ export function HomeScreen({
           </button>
         </div>
       ) : (
+        /*
+         * EL ENTRENAMIENTO QUE TOCA HOY, que es lo unico que tiene que resolver esta pantalla.
+         *
+         * Los dias salen de la propia rutina (se eligen al prepararla). Si hoy no hay nada
+         * programado se dice claramente y se ofrece elegir, en lugar de proponer una rutina
+         * cualquiera: proponer la equivocada es peor que no proponer nada.
+         */
         <div className="card">
-          <div className="small muted" style={{ marginBottom: 4 }}>
+          <div className="small muted" style={{ marginBottom: 6 }}>
             Hoy es {todayName}
           </div>
-          <div style={{ fontSize: '1.12rem', fontWeight: 700, marginBottom: 4 }}>
-            {suggested ? suggested.name : 'Sin rutina configurada'}
-          </div>
-          {suggested ? (
-            <div className="small muted" style={{ marginBottom: 12 }}>
-              {suggested.exercises.length} ejercicios
-              {suggested.description ? ` · ${suggested.description}` : ''}
-            </div>
+
+          {planificadas.length === 0 ? (
+            <>
+              <div style={{ fontSize: '1.12rem', fontWeight: 700, marginBottom: 4 }}>
+                Hoy no toca entrenar
+              </div>
+              <div className="small muted" style={{ marginBottom: 12 }}>
+                Ninguna rutina está programada para hoy. Puedes entrenar igualmente si te apetece.
+              </div>
+            </>
           ) : (
-            <div className="small muted" style={{ marginBottom: 12 }}>
-              Crea tu primera rutina para empezar en un toque.
-            </div>
+            <>
+              <div style={{ fontSize: '1.12rem', fontWeight: 700, marginBottom: 6 }}>
+                {planificadas.length === 1
+                  ? planificadas[0].name
+                  : `${planificadas.length} entrenamientos para hoy`}
+              </div>
+              <div className="list" style={{ marginBottom: 12 }}>
+                {planificadas.map((r) => (
+                  <button
+                    key={r.id}
+                    className="list-item"
+                    style={{ background: 'transparent', border: 0, textAlign: 'left', width: '100%', padding: '6px 0' }}
+                    onClick={() => void onStart(r, today)}
+                  >
+                    <div className="main">
+                      <div className="title">
+                        {r.code ? <span className="badge" style={{ marginRight: 6 }}>{r.code}</span> : null}
+                        {r.name}
+                      </div>
+                      <div className="meta">
+                        {r.exercises.length} ejercicios
+                        {r.description ? ` · ${r.description}` : ''}
+                      </div>
+                    </div>
+                    <span className="btn sm primary">▶ Empezar</span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
-          <button className="btn primary block lg" onClick={() => setPickerOpen(true)}>
-            ▶ Empezar entrenamiento
+
+          <button className="btn block" onClick={() => setPickerOpen(true)}>
+            {planificadas.length > 0 ? 'Hacer otra cosa' : 'Elegir rutina y entrenar'}
           </button>
-          {suggested ? (
-            <button
-              className="btn ghost block"
-              style={{ marginTop: 8 }}
-              onClick={() => void onStart(suggested, today)}
-            >
-              Empezar directamente: {suggested.code ?? '·'} {suggested.name}
-            </button>
-          ) : null}
         </div>
       )}
 
-      {/* ------------------------------- stats ------------------------------ */}
-      <div className="stats">
-        <div className="stat">
-          <div className="value">{stats?.sessions ?? 0}</div>
-          <div className="label">Sesiones</div>
-        </div>
-        <div className="stat">
-          <div className="value">{formatKilograms(stats?.volume ?? 0)}</div>
-          <div className="label">Volumen total</div>
-        </div>
-        <div className="stat">
-          {/*
-            Se da la distancia EXACTA, con la misma funcion que la hoja de cardio.
-            Antes se redondeaba a kilometros enteros y por eso aqui ponia 5 km mientras
-            en la hoja de cardio ponia 4,5 km: dos sitios del mismo dato en desacuerdo.
-          */}
-          <div className="value">{formatKilometers(stats?.cardioKm ?? 0)}</div>
-          <div className="label">Cardio acumulado</div>
-        </div>
-        <div className="stat">
-          <div className="value">
-            {stats?.streakWeeks ?? 0}
-            <span className="small muted" style={{ fontWeight: 500 }}>
-              {' '}
-              sem
-            </span>
-          </div>
-          <div className="label">Racha seguida</div>
-        </div>
-      </div>
-
-      {/* ---------------------------- ultimas sesiones ---------------------- */}
-      <div className="card">
-        <div className="section-head">
-          <h2 className="card-title" style={{ margin: 0 }}>
-            Últimas sesiones
-          </h2>
-          <button className="btn sm ghost" onClick={() => onGoTo('progreso')}>
-            Ver progresión
-          </button>
-        </div>
-
-        {recentSummaries.length === 0 ? (
-          <div className="empty" style={{ padding: '20px 8px' }}>
-            <div className="big">📋</div>
-            Todavía no hay sesiones guardadas.
-          </div>
-        ) : (
-          <div className="list">
-            {recentSummaries.map((session) => (
-              <SessionRow
-                key={session.id}
-                sessionId={session.id}
-                date={session.date}
-                routineName={session.routineName}
-                startedAt={session.startedAt}
-                endedAt={session.endedAt}
-                onDelete={() => setPendingDelete(session.id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* -------------------------- copia y ayuda -------------------------- */}
       {/*
-        Copia de seguridad a mano alzada en Inicio: antes solo estaba en Ajustes y en el aviso, y
-        en la practica se hace poco. Y COMPARTIRLA, no solo descargarla: una copia que se queda en
-        el mismo movil no protege de perder el movil, que es el unico riesgo serio que queda.
+        Aviso de copia de seguridad. Los datos viven solo en este movil: si se borran los datos del
+        navegador no hay forma de recuperarlos sin copia. Solo aparece cuando hay algo que decir.
       */}
-      <div className="card">
-        <h2 className="card-title" style={{ marginTop: 0 }}>
-          Copia de seguridad
-        </h2>
-        <p className="small muted" style={{ marginTop: 0 }}>
-          {copiadoHace !== null
-            ? copiadoHace === 0
-              ? 'Última copia: hoy.'
-              : `Última copia: hace ${copiadoHace} ${copiadoHace === 1 ? 'día' : 'días'}.`
-            : 'Todavía no has hecho ninguna copia.'}{' '}
-          {puedeCompartirArchivos()
-            ? 'Compártela contigo mismo y el archivo saldrá del móvil.'
-            : 'Descárgala y guárdala fuera del móvil.'}
-        </p>
-        <div className="row wrap" style={{ gap: 8 }}>
-          <button
-            className="btn primary grow"
-            disabled={copiando}
-            onClick={async () => {
-              setCopiando(true)
-              try {
-                const resultado = await compartirCopiaDeSeguridad()
-                if (resultado === 'cancelada') return
-                notify(
-                  resultado === 'compartida'
-                    ? 'Copia enviada: guárdala donde quieras'
-                    : 'Copia descargada: guárdala en un sitio seguro',
-                )
-                setRefreshKey((k) => k + 1)
-                onSettingsChanged()
-              } finally {
-                setCopiando(false)
-              }
-            }}
-          >
-            {copiando ? 'Preparando…' : '↗ Compartir copia'}
-          </button>
-          <button
-            className="btn grow"
-            onClick={() => onGoTo('ajustes')}
-            aria-label="Más opciones de copia"
-          >
-            Más opciones
-          </button>
-        </div>
-      </div>
+      <BackupReminder
+        settings={settings}
+        hayDatos={(stats?.sessions ?? 0) > 0 || (stats?.sets ?? 0) > 0 || (stats?.cardioKm ?? 0) > 0}
+        onDescargar={async () => {
+          await descargarCopiaDeSeguridad()
+          notify('Copia descargada: guárdala en un sitio seguro')
+          onGuardarAjuste({ lastBackupAt: Date.now() })
+        }}
+        onCompartir={async () => {
+          const resultado = await compartirCopiaDeSeguridad()
+          if (resultado.estado === 'cancelada') return
+          // La fecha se anota por el mismo camino que el resto de ajustes, para que la pantalla
+          // se entere al momento (y no al recargar).
+          if (resultado.cuando) await onGuardarAjuste({ lastBackupAt: resultado.cuando })
+          notify(
+            resultado.estado === 'compartida'
+              ? 'Copia enviada: guárdala donde quieras'
+              : 'Copia descargada: guárdala en un sitio seguro',
+          )
+        }}
+      />
 
-      {/* La ayuda, a mano: es lo primero que se busca cuando algo no se entiende. */}
-      <button className="btn block ghost" onClick={onVerAyuda}>
-        📖 Ayuda e instrucciones
-      </button>
+      {/* Aviso de que toca medirse: cada dos semanas, que es su ritmo real. */}
+      <MeasurementReminder mediciones={mediciones ?? []} onVer={() => onGoTo('progreso')} />
+
+      {/*
+        Accesos discretos al final. Antes esta pantalla tenia los totales, las ultimas sesiones, el
+        cardio reciente y la copia: todo eso esta ya en sus apartados, y repetirlo aqui obligaba a
+        bajar por media pantalla para llegar al entrenamiento del dia.
+      */}
+      <div className="row wrap" style={{ gap: 8, justifyContent: 'center' }}>
+        <button
+          className="btn sm ghost"
+          onClick={async () => {
+            const resultado = await compartirCopiaDeSeguridad()
+            if (resultado.estado === 'cancelada') return
+            if (resultado.cuando) await onGuardarAjuste({ lastBackupAt: resultado.cuando })
+            notify(
+              resultado.estado === 'compartida'
+                ? 'Copia enviada: guárdala donde quieras'
+                : 'Copia descargada: guárdala en un sitio seguro',
+            )
+          }}
+        >
+          ↗ Copia de seguridad
+        </button>
+        <button className="btn sm ghost" onClick={() => onGoTo('progreso')}>
+          📈 Progreso
+        </button>
+        <button className="btn sm ghost" onClick={onVerAyuda}>
+          📖 Ayuda
+        </button>
+      </div>
 
       {/* -------------------------------- cardio ---------------------------- */}
       {(cardio?.length ?? 0) > 0 ? (
@@ -334,52 +272,6 @@ export function HomeScreen({
           onCancel={() => setPendingDelete(null)}
         />
       ) : null}
-    </div>
-  )
-}
-
-/* ------------------------------------------------------------------ */
-
-function SessionRow({
-  sessionId,
-  date,
-  routineName,
-  startedAt,
-  endedAt,
-  onDelete,
-}: {
-  sessionId: string
-  date: string
-  routineName: string
-  startedAt: number
-  endedAt: number | null
-  onDelete: () => void
-}) {
-  const { data: sets } = useQuery(() => listSets(sessionId), [sessionId], [])
-  const list = sets ?? []
-  const volume = list.filter((s) => !s.isWarmup).reduce((acc, s) => acc + s.weight * s.reps, 0)
-  const duration = endedAt ? Math.round((endedAt - startedAt) / 1000) : null
-  const exercises = [...new Set(list.map((s) => s.exerciseName))]
-
-  return (
-    <div className="list-item">
-      <div className="main">
-        <div className="title">{routineName}</div>
-        <div className="meta">
-          {prettyDate(date)}
-          {duration ? ` · ${formatDuration(duration)}` : ''}
-          {list.length > 0 ? ` · ${list.length} series` : ''}
-          {volume > 0 ? ` · ${formatKilograms(volume)}` : ''}
-        </div>
-        {exercises.length > 0 ? (
-          <div className="tiny muted" style={{ marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {exerciseSummary(list)}
-          </div>
-        ) : null}
-      </div>
-      <button className="icon-btn danger" onClick={onDelete} aria-label="Borrar sesión">
-        🗑
-      </button>
     </div>
   )
 }

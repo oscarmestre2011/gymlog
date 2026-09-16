@@ -54,16 +54,16 @@ try {
   // "Ya viene con rutinas Fuerza A, B y C"
   await page.getByText('Ya lo veré luego').click()
   await page.waitForTimeout(900)
-  await page.getByRole('button', { name: /Rutinas/ }).click()
+  await page.locator('.nav button', { hasText: 'Rutinas' }).click()
   await page.waitForTimeout(700)
   const rutinas = await page.locator('body').innerText()
   check('Las rutinas Fuerza A, B y C existen de verdad', /Fuerza A/.test(rutinas) && /Fuerza B/.test(rutinas) && /Fuerza C/.test(rutinas))
   check('Y también la de movilidad para casa', /Movilidad/i.test(rutinas))
 
   // "Escribe peso y repeticiones, admite coma: 52,5"
-  await page.getByRole('button', { name: /Inicio/ }).click()
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
   await page.waitForTimeout(500)
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 15000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 15000 })
@@ -91,7 +91,7 @@ try {
   await page.waitForSelector('.modal', { timeout: 15000 })
   await page.locator('.modal').getByRole('button', { name: 'Terminar', exact: true }).click()
   await page.waitForTimeout(1600)
-  await page.getByRole('button', { name: /Progreso/ }).click()
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
   await page.waitForTimeout(900)
   const progreso = await page.locator('body').innerText()
   check('La sesión aparece en Progresión, como promete', /Back squat/.test(progreso) && /Historial/i.test(progreso))
@@ -103,8 +103,15 @@ try {
   await page.waitForTimeout(1200)
   const segundaVisita = await page.locator('body').innerText()
   check('La bienvenida NO vuelve a aparecer', !/Bienvenido a Kairós/i.test(segundaVisita))
-  check('Se entra directamente a la app', segundaVisita.includes('Empezar entrenamiento'))
-  check('Los datos guardados siguen ahí', /Back squat|Fuerza A/.test(segundaVisita))
+  check('Se entra directamente a la app', segundaVisita.includes('Hoy es'))
+  /*
+   * Los datos guardados se comprueban en PROGRESION: la portada solo propone el entrenamiento del
+   * dia, asi que el historial no esta ahi. Se navega, que es lo que haria el usuario.
+   */
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
+  await page.waitForTimeout(1500)
+  const progresoTrasRecargar = await page.locator('body').innerText()
+  check('Los datos guardados siguen ahí', /Back squat|Fuerza A/.test(progresoTrasRecargar), progresoTrasRecargar.match(/SESIONES GUARDADAS[\s\S]{0,60}/i)?.[0]?.replace(/\n/g, ' ') ?? 'sin sección')
 
   await context.close()
 
@@ -117,7 +124,7 @@ try {
   // Se descarta la bienvenida, se empieza una sesión y se borra la marca de "vista".
   await page2.getByText('Ya lo veré luego').click()
   await page2.waitForTimeout(800)
-  await page2.getByText('Empezar entrenamiento').click()
+  await page2.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page2.waitForSelector('.modal', { timeout: 15000 })
   await page2.locator('.modal .list-item', { hasText: 'Fuerza C' }).first().click()
   await page2.waitForSelector('.exercise-card', { timeout: 15000 })

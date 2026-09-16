@@ -40,7 +40,7 @@ try {
 
   /* --------------------- 1. La pestaña existe y se abre -------------------- */
   console.log('\n--- 1. Biblioteca de ejercicios ---')
-  await page.getByRole('button', { name: /Ejercicios/ }).click()
+  await page.locator('.nav button', { hasText: 'Ejercicios' }).click()
   await page.waitForTimeout(1200)
   const inicial = await page.locator('body').innerText()
   check('Hay una pestaña de Ejercicios', /ejercicios en la biblioteca/i.test(inicial), inicial.match(/\d+ ejercicios en la biblioteca[^\n]*/)?.[0] ?? '')
@@ -89,9 +89,9 @@ try {
 
   /* ---------------- 4. Disponible al apuntar una sesión ------------------- */
   console.log('\n--- 4. Disponible durante una sesión ---')
-  await page.getByRole('button', { name: /Inicio/ }).click()
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
   await page.waitForTimeout(800)
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 12000 })
@@ -115,7 +115,7 @@ try {
   await page.reload({ waitUntil: 'networkidle', timeout: 45000 })
   await page.waitForSelector('.nav', { timeout: 25000 })
   await page.waitForTimeout(1500)
-  await page.getByRole('button', { name: /Ejercicios/ }).click()
+  await page.locator('.nav button', { hasText: 'Ejercicios' }).click()
   await page.waitForTimeout(1200)
   check('El ejercicio sigue en la biblioteca', (await page.locator('body').innerText()).includes(NOMBRE))
 

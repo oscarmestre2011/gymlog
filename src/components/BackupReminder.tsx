@@ -17,10 +17,16 @@ export function BackupReminder({
   settings,
   hayDatos,
   onDescargar,
+  onCompartir,
 }: {
   settings: Settings
   hayDatos: boolean
   onDescargar: () => Promise<void> | void
+  /**
+   * Compartir la copia (WhatsApp, correo, Drive). Es la forma de que el archivo SALGA del movil,
+   * que es lo unico que protege de perderlo. Si no se pasa, solo se ofrece descargar.
+   */
+  onCompartir?: () => Promise<void> | void
 }) {
   const [descartado, setDescartado] = useState(true)
   const [descargando, setDescargando] = useState(false)
@@ -48,7 +54,7 @@ export function BackupReminder({
   }
 
   return (
-    <div className="card reminder">
+    <div className="card reminder reminder-copia">
       <div className="row between" style={{ alignItems: 'flex-start', gap: 10 }}>
         <div className="grow">
           <div style={{ fontWeight: 700 }}>💾 {titulo}</div>
@@ -60,22 +66,41 @@ export function BackupReminder({
           ✕
         </button>
       </div>
-      <button
-        className="btn primary block"
-        style={{ marginTop: 12 }}
-        disabled={descargando}
-        onClick={async () => {
-          setDescargando(true)
-          try {
-            await onDescargar()
-            descartar()
-          } finally {
-            setDescargando(false)
-          }
-        }}
-      >
-        ⬇ Descargar copia ahora
-      </button>
+      <div className="row wrap" style={{ gap: 8, marginTop: 12 }}>
+        {onCompartir ? (
+          <button
+            className="btn primary grow"
+            disabled={descargando}
+            onClick={async () => {
+              setDescargando(true)
+              try {
+                await onCompartir()
+                descartar()
+              } finally {
+                setDescargando(false)
+              }
+            }}
+          >
+            ↗ Compartir copia
+          </button>
+        ) : null}
+        <button
+          className={`btn${onCompartir ? '' : ' primary'} ${onCompartir ? 'grow' : 'block'}`}
+          style={onCompartir ? undefined : { marginTop: 12 }}
+          disabled={descargando}
+          onClick={async () => {
+            setDescargando(true)
+            try {
+              await onDescargar()
+              descartar()
+            } finally {
+              setDescargando(false)
+            }
+          }}
+        >
+          ⬇ Descargar
+        </button>
+      </div>
     </div>
   )
 }

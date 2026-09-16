@@ -103,7 +103,7 @@ try {
   await abrirInicio()
   check(
     'No avisa si no hay entrenamientos que perder',
-    (await page.locator('.reminder').count()) === 0,
+    (await page.locator('.reminder-copia').count()) === 0,
     'sin aviso (correcto: no hay nada que perder)',
   )
 
@@ -111,17 +111,24 @@ try {
   console.log('\n--- 2. Con entrenamientos y sin copia ---')
   await preparar({ sesiones: 3, ultimaCopiaHace: null })
   await abrirInicio()
-  const aviso = await page.locator('.reminder').innerText()
+  /*
+   * El aviso de copia se dibuja DESPUES de leer si estaba descartado (guarda esa marca en el
+   * almacenamiento del navegador), asi que hay que esperar a que aparezca. Mirarlo al instante da
+   * un fallo falso.
+   */
+  const avisoCopia = page.locator('.reminder-copia')
+  await avisoCopia.first().waitFor({ timeout: 8000 }).catch(() => undefined)
+  const aviso = await avisoCopia.first().innerText()
   check('Avisa de que no hay ninguna copia', /Todavía no has hecho ninguna copia/i.test(aviso), aviso.split('\n')[0])
   check('Explica por qué importa', /solo están en este móvil/i.test(aviso))
-  check('Ofrece descargar la copia', /Descargar copia ahora/i.test(aviso))
+  check('Ofrece descargar la copia', /⬇ Descargar|Descargar copia ahora/i.test(aviso))
   await page.screenshot({ path: join(shotsDir, '26-aviso-copia.png') })
 
   /* --------------------- 3. El botón descarga de verdad ------------------- */
   console.log('\n--- 3. Descargar la copia ---')
   const [descarga] = await Promise.all([
     page.waitForEvent('download', { timeout: 20000 }),
-    page.getByRole('button', { name: /Descargar copia ahora/i }).click(),
+    page.locator('.reminder-copia').getByRole('button', { name: /Descargar/i }).first().click(),
   ])
   const nombre = descarga.suggestedFilename()
   const ruta = await descarga.path()
@@ -136,7 +143,7 @@ try {
   check('La copia lleva también los ajustes', Array.isArray(contenido.data?.settings), `settings: ${Array.isArray(contenido.data?.settings)}`)
 
   await page.waitForTimeout(1200)
-  check('Tras descargar, el aviso desaparece', (await page.locator('.reminder').count()) === 0)
+  check('Tras descargar, el aviso desaparece', (await page.locator('.reminder-copia').count()) === 0)
   const guardado = await page.evaluate(async () => {
     const peticion = indexedDB.open('gymlog')
     const db = await new Promise((resolve) => {
@@ -154,22 +161,22 @@ try {
   console.log('\n--- 4. Con la copia de hace 20 días ---')
   await preparar({ sesiones: 3, ultimaCopiaHace: 20 })
   await abrirInicio()
-  const avisoViejo = await page.locator('.reminder').innerText()
+  const avisoViejo = await page.locator('.reminder-copia').innerText()
   check('Avisa cuando la copia está vieja', /Hace 20 días que no haces copia/i.test(avisoViejo), avisoViejo.split('\n')[0])
 
   /* --------------------------- 5. Se puede descartar -------------------- */
   console.log('\n--- 5. Descartar el aviso ---')
   await page.locator('.reminder button[aria-label="Recordármelo luego"]').click()
   await page.waitForTimeout(600)
-  check('Al descartarlo desaparece', (await page.locator('.reminder').count()) === 0)
+  check('Al descartarlo desaparece', (await page.locator('.reminder-copia').count()) === 0)
   await abrirInicio()
-  check('No vuelve a salir al recargar', (await page.locator('.reminder').count()) === 0)
+  check('No vuelve a salir al recargar', (await page.locator('.reminder-copia').count()) === 0)
 
   /* ----------------- 6. Se puede desactivar el aviso ------------------- */
   console.log('\n--- 6. Recordatorio desactivado ---')
   await preparar({ sesiones: 3, ultimaCopiaHace: 20, intervalo: 0 })
   await abrirInicio()
-  check('Con el recordatorio desactivado no aparece', (await page.locator('.reminder').count()) === 0)
+  check('Con el recordatorio desactivado no aparece', (await page.locator('.reminder-copia').count()) === 0)
   await page.locator('.nav button', { hasText: 'Ajustes' }).click()
   await page.waitForTimeout(900)
   const ajustes = await page.locator('body').innerText()
@@ -179,11 +186,11 @@ try {
   console.log('\n--- 7. Cambiar el intervalo a cada mes ---')
   await page.getByRole('button', { name: 'Cada mes' }).click()
   await page.waitForTimeout(900)
-  await page.getByRole('button', { name: /Inicio/ }).click()
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
   await page.waitForTimeout(900)
   check(
     'Con intervalo de un mes, una copia de hace 20 días ya no avisa',
-    (await page.locator('.reminder').count()) === 0,
+    (await page.locator('.reminder-copia').count()) === 0,
     'sin aviso (correcto)',
   )
 } finally {

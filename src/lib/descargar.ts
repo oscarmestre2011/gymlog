@@ -39,6 +39,13 @@ export async function descargarCopiaDeSeguridad(): Promise<void> {
 /** Como ha terminado el intento de compartir la copia. */
 export type ResultadoCompartir = 'compartida' | 'descargada' | 'cancelada' | 'no-soportado'
 
+/** Lo que devuelve compartir: como acabo y cuando, para poder anotarlo. */
+export interface ResultadoCopia {
+  estado: ResultadoCompartir
+  /** Momento en que se hizo la copia, o null si no se llego a hacer. */
+  cuando: number | null
+}
+
 /** Se puede compartir ARCHIVOS en este navegador (no solo texto)? */
 export function puedeCompartirArchivos(): boolean {
   if (typeof navigator === 'undefined') return false
@@ -62,38 +69,43 @@ export function puedeCompartirArchivos(): boolean {
  * telefono. Si el navegador no sabe compartir archivos (o el usuario cancela), se descarga, que es
  * lo que se hacia antes: nunca se queda sin copia.
  *
- * Devuelve como ha terminado, para poder avisar en consecuencia.
+ * OJO CON LA COMPROBACION PREVIA, que aqui estuvo un fallo: antes se preguntaba al navegador si
+ * sabia compartir archivos (`navigator.canShare`), y si decia que no se descargaba directamente. En
+ * el movil del usuario esa comprobacion decia que no, asi que el boton de compartir hacia
+ * exactamente lo mismo que el de guardar: descargar, sin compartir nunca.
+ *
+ * Ahora se INTENTA COMPARTIR sin preguntar antes, y solo se descarga si el intento falla de verdad.
+ * Es la unica forma fiable: `canShare` no funciona igual en todos los navegadores.
  */
-export async function compartirCopiaDeSeguridad(): Promise<ResultadoCompartir> {
+export async function compartirCopiaDeSeguridad(): Promise<ResultadoCopia> {
   const copia = await exportBackup()
   const fecha = new Date().toISOString().slice(0, 10)
   const nombre = `kairos-copia-${fecha}.json`
   const contenido = JSON.stringify(copia, null, 2)
 
-  if (!puedeCompartirArchivos()) {
-    await descargarArchivo(contenido, nombre, 'application/json')
-    await saveSettings({ lastBackupAt: Date.now() })
-    return 'no-soportado'
+  const nav = navigator as Navigator & {
+    share?: (datos: { files?: File[]; title?: string; text?: string }) => Promise<void>
   }
 
-  const archivo = new File([contenido], nombre, { type: 'application/json' })
+  // Sin funcion de compartir no hay nada que intentar: se descarga.
+  if (typeof nav.share !== 'function') {
+    await descargarArchivo(contenido, nombre, 'application/json')
+    return { estado: 'no-soportado', cuando: Date.now() }
+  }
+
   try {
-    const nav = navigator as Navigator & {
-      share: (datos: { files?: File[]; title?: string; text?: string }) => Promise<void>
-    }
+    const archivo = new File([contenido], nombre, { type: 'application/json' })
     await nav.share({
       files: [archivo],
       title: 'Copia de Kairós',
       text: 'Copia de mis entrenamientos. Guarda este archivo: sirve para recuperarlos.',
     })
-    await saveSettings({ lastBackupAt: Date.now() })
-    return 'compartida'
+    return { estado: 'compartida', cuando: Date.now() }
   } catch (error) {
     // Cancelar el dialogo no es un fallo: no se hace nada mas y no se anota la copia.
-    if ((error as { name?: string })?.name === 'AbortError') return 'cancelada'
-    // Y si compartir falla por lo que sea, se descarga: mejor eso que quedarse sin copia.
+    if ((error as { name?: string })?.name === 'AbortError') return { estado: 'cancelada', cuando: null }
+    // Y si compartir falla de verdad, se descarga: mejor eso que quedarse sin copia.
     await descargarArchivo(contenido, nombre, 'application/json')
-    await saveSettings({ lastBackupAt: Date.now() })
-    return 'descargada'
+    return { estado: 'descargada', cuando: Date.now() }
   }
 }

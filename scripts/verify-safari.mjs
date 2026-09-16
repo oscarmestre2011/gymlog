@@ -45,7 +45,7 @@ try {
   await esperarApp(page, 40000)
   await page.waitForTimeout(1200)
   const home = await page.locator('body').innerText()
-  check('La app se monta en Safari', home.includes('Empezar entrenamiento'))
+  check('La app se monta en Safari', home.includes('Hoy es'))
   check('Sin errores de JavaScript en Safari', jsErrors.length === 0, jsErrors.join(' | '))
   check('Sin recursos que fallen', failedRequests.length === 0, failedRequests.slice(0, 3).join(' | '))
 
@@ -74,7 +74,20 @@ try {
   check('Safari entiende las zonas seguras (notch)', seguro.soportaEnv)
 
   /* -------------------- registrar una serie en Safari ------------------- */
-  await page.getByText('Empezar entrenamiento').click()
+  /*
+   * OJO: esta prueba corre por defecto contra la DIRECCION PUBLICADA (no contra el build local), y
+   * la publicada puede ser una version anterior. Al limpiar la portada cambio el texto del boton de
+   * empezar y el sitio del selector de rutinas, asi que se admiten LAS DOS versiones: asi la prueba
+   * vale antes y despues de publicar, y no da un fallo que parece de la app cuando solo es que la
+   * version publicada todavia es la vieja.
+   */
+  const botonNuevo = page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i })
+  const botonViejo = page.getByText('Empezar entrenamiento')
+  if ((await botonNuevo.count()) > 0) {
+    await botonNuevo.first().click({ timeout: 15000 })
+  } else {
+    await botonViejo.first().click({ timeout: 15000 })
+  }
   await page.waitForSelector('.modal', { timeout: 15000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 15000 })

@@ -40,7 +40,7 @@ try {
 
   /* -------------------- 1. Se entra desde Progresión --------------------- */
   console.log('\n--- 1. Acceso desde Progresión ---')
-  await page.getByRole('button', { name: /Progreso/ }).click()
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
   await page.waitForTimeout(1200)
   const progreso = await page.locator('body').innerText()
   check('Progresión muestra el resumen de medidas', /Medidas corporales/i.test(progreso), progreso.match(/Medidas corporales[^\n]*/)?.[0] ?? '')
@@ -138,7 +138,7 @@ try {
    */
   await page.reload({ waitUntil: 'networkidle', timeout: 45000 })
   await page.waitForTimeout(2200)
-  await page.getByRole('button', { name: /Progreso/ }).click()
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
   await page.waitForTimeout(1200)
   await page.getByRole('button', { name: /Ver todas las medidas/i }).click()
   await page.waitForTimeout(1200)

@@ -40,7 +40,7 @@ try {
 
   /* ------------- 0. Se apunta un peso en las medidas (de donde sale) -------- */
   console.log('--- 0. Preparando: peso en las medidas corporales ---')
-  await page.getByRole('button', { name: /Progreso/ }).click()
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
   await page.waitForTimeout(1000)
   await page.getByRole('button', { name: /Añadir la primera medición|Ver todas las medidas/ }).click()
   await page.waitForTimeout(1200)
@@ -127,7 +127,7 @@ try {
   console.log('\n--- 5. Los datos se guardan ---')
   await page.reload({ waitUntil: 'networkidle', timeout: 45000 })
   await page.waitForTimeout(2200)
-  await page.getByRole('button', { name: /Progreso/ }).click()
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
   await page.waitForTimeout(1200)
   const trasRecargar = await page.locator('body').innerText()
   check('Tras recargar, el perfil sigue con datos', /\d+\s*años|IMC|kcal al día/i.test(trasRecargar), trasRecargar.match(/(\d+)\s*años/)?.[0] ?? '')

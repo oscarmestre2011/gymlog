@@ -113,7 +113,7 @@ try {
 
   /* --------------------- 2. El usuario entrena y guarda -------------------- */
   console.log('\n2) El usuario apunta un entrenamiento')
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 15000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 15000 })
@@ -196,12 +196,20 @@ try {
   check('Las series siguen guardadas tras el cambio de nombre', datosDespues.series === 3, `${datosDespues.series} series`)
   check('Los pesos son los mismos', datosDespues.pesos[0] === 47.5, JSON.stringify(datosDespues.pesos))
 
+  /*
+   * El historial de sesiones esta en PROGRESION: la portada solo propone el entrenamiento del dia,
+   * asi que el peso apuntado ya no se ve ahi. Se navega para comprobarlo.
+   */
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
+  await page.waitForTimeout(1500)
   const texto = await page.locator('body').innerText()
-  check('El historial se ve en la app renombrada', /47,5|Fuerza A/.test(texto), texto.slice(0, 70).replace(/\n/g, ' '))
+  check('El historial se ve en la app renombrada', /47,5|Fuerza A/.test(texto), texto.match(/SESIONES GUARDADAS[\s\S]{0,60}/i)?.[0]?.replace(/\n/g, ' ') ?? 'sin sección')
   check('No se ha creado una app nueva con datos vacíos', datosDespues.sesiones === 1, `${datosDespues.sesiones} sesión(es)`)
 
   /* ------------------- 5. Y se puede seguir usando igual ------------------ */
-  await page.getByText('Empezar entrenamiento').click()
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
+  await page.waitForTimeout(1000)
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 15000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza B' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 15000 })

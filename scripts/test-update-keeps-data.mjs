@@ -186,7 +186,7 @@ try {
 
   /* --------------- 2. El usuario apunta un entrenamiento -------------- */
   console.log('\n2) Se apunta un entrenamiento completo (4 series de 50 kg x 10)')
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 12000 })
@@ -206,8 +206,14 @@ try {
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal').getByRole('button', { name: 'Terminar', exact: true }).click()
   await page.waitForTimeout(1800)
+  /*
+   * El historial de sesiones y los totales estan en PROGRESION: la portada se limpio y solo
+   * propone el entrenamiento del dia.
+   */
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
+  await page.waitForTimeout(1800)
   const trasGuardar = await page.locator('body').innerText()
-  check('La sesion queda guardada en el historial', /2\.000 kg|2000 kg/.test(trasGuardar))
+  check('La sesion queda guardada en el historial', /2\.000 kg|2000 kg/.test(trasGuardar), trasGuardar.match(/[\d.,]+ kg/)?.[0] ?? '')
 
   /* -------------------- 3. Se publica la version B ------------------- */
   console.log('\n3) Se publica la version B. Los ficheros de A YA NO EXISTEN.')
@@ -236,9 +242,12 @@ try {
   console.log('\n4) Comprobacion clave: sigue el entrenamiento guardado?')
   await esperarApp(page, 25000)
   await page.waitForTimeout(1500)
+  // Se vuelve a Progresion, que es donde se ven las sesiones guardadas y los totales.
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
+  await page.waitForTimeout(1800)
   const despues = await page.locator('body').innerText()
-  check('La sesion sigue en el historial tras actualizar', despues.includes('Fuerza A'), despues.slice(0, 70).replace(/\n/g, ' '))
-  check('El volumen guardado se conserva', /2\.000 kg|2000 kg/.test(despues))
+  check('La sesion sigue en el historial tras actualizar', despues.includes('Fuerza A'), despues.match(/SESIONES GUARDADAS[\s\S]{0,80}/i)?.[0]?.replace(/\n/g, ' ') ?? 'sin sección')
+  check('El volumen guardado se conserva', /2\.000 kg|2000 kg/.test(despues), despues.match(/[\d.,]+ kg/)?.[0] ?? '')
 
   const datos = await page.evaluate(async () => {
     const peticion = indexedDB.open('gymlog')
@@ -260,7 +269,11 @@ try {
 
   /* --------- 5. Y se puede seguir entrenando tras actualizar --------- */
   console.log('\n5) Se puede seguir apuntando series con la version nueva?')
-  await page.getByText('Empezar entrenamiento').click()
+  // El boton de empezar esta en la portada: se vuelve a ella (la comprobacion anterior dejo la
+  // pantalla en Progresion).
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
+  await page.waitForTimeout(1200)
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza B' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 12000 })

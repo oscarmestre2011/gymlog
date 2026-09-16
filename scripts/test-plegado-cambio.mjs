@@ -41,7 +41,7 @@ try {
   await page.waitForSelector('.nav', { timeout: 25000 })
 
   /* ------------------------ Empezar una sesión --------------------------- */
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 12000 })

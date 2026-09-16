@@ -23,7 +23,7 @@ export function MeasurementReminder({
   const dias = diasDesdeLaUltima(mediciones)
 
   return (
-    <div className="card reminder">
+    <div className="card reminder reminder-medidas">
       <div className="row between" style={{ alignItems: 'flex-start', gap: 10 }}>
         <div className="grow">
           <div style={{ fontWeight: 700 }}>📏 Toca medirse</div>

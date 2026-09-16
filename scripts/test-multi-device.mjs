@@ -37,7 +37,7 @@ async function pasarBienvenida(page) {
 
 /** Apunta series de un ejercicio con unos pesos concretos y termina la sesion. */
 async function apuntarEntrenamiento(page, rutina, peso, reps) {
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 15000 })
   await page.locator('.modal .list-item', { hasText: rutina }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 15000 })
@@ -116,7 +116,7 @@ try {
     datos2Antes.sesiones === 0 && datos2Antes.series === 0,
     `${datos2Antes.sesiones} sesiones, ${datos2Antes.series} series`,
   )
-  check('La persona 2 ve la app lista para usar', inicio2.includes('Empezar entrenamiento'))
+  check('La persona 2 ve la app lista para usar', inicio2.includes('Hoy es'))
   check(
     'La persona 2 no ve el historial de la persona 1',
     !inicio2.includes('50 kg'),
@@ -143,7 +143,14 @@ try {
     `pesos de la persona 1: ${JSON.stringify(datos1Despues.pesos)}`,
   )
   check('La persona 1 conserva su entrenamiento', datos1Despues.series === 2 && datos1Despues.pesos[0] === 50)
-  check('Cada libreta tiene su propio historial', texto1.includes('Fuerza A'))
+  /*
+   * El historial de sesiones esta en PROGRESION: la portada solo propone el entrenamiento del dia.
+   * Se navega para comprobarlo, que es lo que haria la persona.
+   */
+  await page1.locator('.nav button', { hasText: 'Progreso' }).click()
+  await page1.waitForTimeout(1500)
+  const progreso1 = await page1.locator('body').innerText()
+  check('Cada libreta tiene su propio historial', progreso1.includes('Fuerza A'), progreso1.match(/SESIONES GUARDADAS[\s\S]{0,50}/i)?.[0]?.replace(/\n/g, ' ') ?? 'sin sección')
 
   check(
     'Los datos NO viajan a ningun servidor (cada uno en su movil)',

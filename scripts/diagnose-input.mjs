@@ -57,7 +57,7 @@ if (arranco === 0) {
   process.exit(1)
 }
 
-await page.getByText('Empezar entrenamiento').click()
+await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
 await page.waitForSelector('.modal', { timeout: 10000 })
 await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
 await page.waitForSelector('.exercise-card', { timeout: 10000 })

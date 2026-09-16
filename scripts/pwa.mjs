@@ -187,7 +187,7 @@ try {
   check('A · Los iconos del manifiesto existen', iconsOk)
 
   /* ------------------------- preparar una sesion ------------------------- */
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 8000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza B' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 8000 })

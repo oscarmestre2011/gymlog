@@ -49,7 +49,7 @@ try {
   await esperarApp(page, 40000)
   await page.waitForTimeout(1000)
   const home = await page.locator('body').innerText()
-  check('La app se monta y muestra la portada', home.includes('Empezar entrenamiento'))
+  check('La app se monta y muestra la portada', home.includes('Hoy es'))
   check('Carga sin errores de JavaScript', jsErrors.length === 0, jsErrors.join(' | '))
   check('No hay recursos que devuelvan error', failedRequests.length === 0, failedRequests.slice(0, 3).join(' | '))
 
@@ -58,7 +58,7 @@ try {
   await page.screenshot({ path: join(shotsDir, '12-publicada-inicio.png') })
 
   /* ------------------- 3. registrar una serie de verdad ----------------- */
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 15000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 15000 })

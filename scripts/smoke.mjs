@@ -90,13 +90,23 @@ try {
   await page.waitForTimeout(600)
 
   check('La app carga sin errores de JavaScript', errors.length === 0, errors.join(' | '))
-  check('Aparece el botón de empezar', await page.getByText('Empezar entrenamiento').isVisible())
-  const streak = await page.locator('.stat').count()
-  check('Se muestran las estadísticas de la portada', streak >= 4, `${streak} tarjetas`)
+  /*
+   * La portada es SOLO el entrenamiento del dia. Antes tenia los totales, las ultimas sesiones y
+   * el cardio reciente, que ya estan en sus apartados: se quitaron para no tener que bajar por
+   * media pantalla para empezar a entrenar.
+   */
+  const portada = await page.locator('body').innerText()
+  check('La portada dice qué día es hoy', /Hoy es (lunes|martes|miércoles|jueves|viernes|sábado|domingo)/i.test(portada), portada.match(/Hoy es [^\n]*/)?.[0] ?? '')
+  check(
+    'La portada propone el entrenamiento del día',
+    /Fuerza [ABC]|no toca entrenar|Elegir rutina y entrenar/i.test(portada),
+    portada.match(/(Fuerza [ABC][^\n]*|Hoy no toca entrenar)/)?.[0] ?? '',
+  )
+  check('Y hay un botón para empezar', await page.getByRole('button', { name: /Empezar/i }).first().isVisible())
   await shot('01-inicio')
 
   /* --------------------------- 2. rutinas sembradas ----------------------- */
-  await page.getByRole('button', { name: /Rutinas/ }).click()
+  await page.locator('.nav button', { hasText: 'Rutinas' }).click()
   await page.waitForTimeout(500)
   const routineCards = await page.locator('.card').count()
   check('Hay rutinas sembradas del programa A/B/C', routineCards >= 3, `${routineCards} tarjetas`)
@@ -108,9 +118,9 @@ try {
   await shot('02-rutinas')
 
   /* ------------------------ 3. empezar una sesión ------------------------- */
-  await page.getByRole('button', { name: /Inicio/ }).click()
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
   await page.waitForTimeout(300)
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 8000 })
   await shot('03-selector-rutina')
 
@@ -181,7 +191,7 @@ try {
   check('El botón +30s alarga el descanso', toSeconds(after) > toSeconds(before), `${before} -> ${after}`)
 
   /* ---------------------------- 6. progresión ---------------------------- */
-  await page.getByRole('button', { name: /Progreso/ }).click()
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
   await page.waitForTimeout(800)
   const progressText = await page.locator('body').innerText()
   check('Salir a otra pantalla NO cierra la sesión', progressText.includes('Entrenamiento abierto'), progressText.slice(0, 120).replace(/\n/g, ' '))
@@ -199,7 +209,7 @@ try {
   await page.waitForTimeout(400)
 
   /* ------------------------------ 7. cardio ------------------------------ */
-  await page.getByRole('button', { name: /Cardio/ }).click()
+  await page.locator('.nav button', { hasText: 'Cardio' }).click()
   await page.waitForTimeout(400)
   await page.getByText('Añadir sesión de cardio').click()
   await page.waitForSelector('.modal', { timeout: 8000 })
@@ -260,7 +270,7 @@ try {
 
   await page.reload({ waitUntil: 'networkidle' })
   await esperarApp(page)
-  await page.getByRole('button', { name: /Cardio/ }).click()
+  await page.locator('.nav button', { hasText: 'Cardio' }).click()
   await page.waitForTimeout(1300)
   const totales = await page.locator('body').innerText()
 
@@ -323,34 +333,34 @@ try {
   await shot('07b-totales-cardio')
 
   /*
-   * Regresion de un fallo reportado: la pantalla de inicio mostraba 5 km de cardio
-   * acumulado mientras la hoja de cardio mostraba 4,5 km. El mismo dato con dos valores
-   * distintos, porque en la pantalla de inicio se redondeaba a kilometros enteros.
-   * Aqui se comprueba que las dos pantallas dicen LO MISMO.
+   * Regresion de un fallo reportado: la portada mostraba 5 km de cardio acumulado mientras la hoja
+   * de cardio mostraba 4,5 km, porque en la portada se redondeaba a kilometros enteros. Los
+   * totales ya NO estan en la portada (se quitaron al limpiarla), asi que la comprobacion se hace
+   * donde viven ahora: en Progresion.
    */
-  await page.getByRole('button', { name: /Inicio/ }).click()
-  await page.waitForTimeout(1200)
-  const inicio = await page.locator('body').innerText()
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
+  await page.waitForTimeout(1500)
+  const progreso = await page.locator('body').innerText()
 
   const kmTotalTexto = kmPeriodo([0, 1, 2]) // "121,87 km"
   check(
-    'La pantalla de inicio da la distancia exacta, igual que la hoja de cardio',
-    inicio.includes(kmTotalTexto),
-    `esperado ${kmTotalTexto} -> ${inicio.match(/[\d.,]+ km/g)?.slice(0, 3).join(' / ') ?? '?'}`,
+    'La hoja de cardio y el resto de la app dan la misma distancia exacta',
+    progreso.includes(kmTotalTexto) || progreso.includes(kmTotalTexto.replace(' km', '')),
+    `esperado ${kmTotalTexto} -> ${progreso.match(/[\d.,]+ km/g)?.slice(0, 3).join(' / ') ?? '?'}`,
   )
   check(
-    'La pantalla de inicio NO redondea a kilómetros enteros',
-    !inicio.includes('122 km'),
-    inicio.match(/\b12\d km\b/)?.[0] ?? 'no aparece ningún 12X km',
+    'En ningún sitio se redondea a kilómetros enteros',
+    !progreso.includes('122 km'),
+    progreso.match(/\b12\d km\b/)?.[0] ?? 'no aparece ningún 12X km',
   )
   check(
-    'El volumen total lleva separador de millares',
-    /1\.\d{3} kg|1\.\d{3},\d+ kg/.test(inicio),
-    inicio.match(/[\d.,]+ kg/g)?.slice(0, 3).join(' / ') ?? '?',
+    'El volumen lleva separador de millares',
+    /1\.\d{3} kg|1\.\d{3},\d+ kg/.test(progreso),
+    progreso.match(/[\d.,]+ kg/g)?.slice(0, 3).join(' / ') ?? '?',
   )
 
   // Y se vuelve a la hoja de cardio para dejar la prueba donde estaba.
-  await page.getByRole('button', { name: /Cardio/ }).click()
+  await page.locator('.nav button', { hasText: 'Cardio' }).click()
   await page.waitForTimeout(800)
 
   /* ------------------------------ 8. ajustes ----------------------------- */
@@ -380,9 +390,23 @@ try {
   await page.locator('.modal').getByRole('button', { name: 'Terminar', exact: true }).click()
   await page.waitForTimeout(1400)
 
-  const homeText = await page.locator('body').innerText()
-  check('La sesión guardada aparece en el historial', homeText.includes('Fuerza A') && homeText.includes('3 series'))
-  check('El volumen se refleja en las estadísticas', homeText.includes(VOLUMEN_TEXTO), `esperado ${VOLUMEN_TEXTO} -> ${homeText.match(/[\d.,]+ kg/g)?.slice(0, 4).join(' / ') ?? ''}`)
+  /*
+   * Se mira en PROGRESION: la sesion guardada y los totales viven alli. La portada solo propone el
+   * entrenamiento del dia, asi que ya no hay que buscar estos datos en ella.
+   */
+  await page.locator('.nav button', { hasText: 'Progreso' }).click()
+  await page.waitForTimeout(1800)
+  const progresoText = await page.locator('body').innerText()
+  check(
+    'La sesión guardada aparece en el historial',
+    /Sesiones guardadas/i.test(progresoText) && progresoText.includes('Fuerza A') && progresoText.includes('3 series'),
+    progresoText.match(/SESIONES GUARDADAS[^\n]*/i)?.[0] ?? 'sin sección de sesiones',
+  )
+  check(
+    'El volumen se refleja en los totales',
+    progresoText.includes(VOLUMEN_TEXTO),
+    `esperado ${VOLUMEN_TEXTO} -> ${progresoText.match(/[\d.,]+ kg/g)?.slice(0, 4).join(' / ') ?? ''}`,
+  )
   await shot('10-inicio-con-historial')
 
   check('No ha habido errores de JavaScript en todo el recorrido', errors.length === 0, errors.join(' | '))

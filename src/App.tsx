@@ -331,16 +331,6 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
    * bloqueo de pantalla, la duracion del aviso) seguiria usando los valores antiguos hasta
    * recargar. Se detecto con la opcion de mantener la pantalla encendida.
    */
-  /**
-   * Vuelve a leer los ajustes de la base de datos.
-   *
-   * Hace falta cuando otra parte de la app los cambia por su cuenta (por ejemplo al anotar la
-   * fecha de la copia): asi la pantalla se entera sin recargar la app entera.
-   */
-  const recargarAjustes = useCallback(async () => {
-    setSettings(await getSettings())
-  }, [])
-
   const guardarAjustes = useCallback(
     async (patch: Partial<Settings>) => {
       await saveSettings(patch)
@@ -509,7 +499,7 @@ function AppContent({ updateEvent }: { updateEvent: string }) {
           key={`inicio-${refreshKey}`}
           settings={settings}
           onVerAyuda={() => setVerAyuda(true)}
-          onSettingsChanged={recargarAjustes}
+          onGuardarAjuste={guardarAjustes}
           onStart={handleStart}
           onOpenSession={async (id) => {
             const found = await getSession(id)

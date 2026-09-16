@@ -37,6 +37,19 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.5.0',
+    fecha: '2026-09-16',
+    titulo: 'Los entrenamientos se programan por días',
+    cambios: [
+      { tipo: 'nuevo', texto: 'Cada rutina tiene sus días: se eligen al prepararla (con la ✎ de su tarjeta) y pueden ser varios, por ejemplo lunes y jueves.' },
+      { tipo: 'nuevo', texto: 'En Inicio aparece el entrenamiento que toca ese día, con sus ejercicios, y se empieza con un toque. Si ese día no hay nada programado, lo dice en vez de proponer otra cosa.' },
+      { tipo: 'nuevo', texto: 'En Rutinas hay un resumen de la semana con lo que toca cada día, y avisa de los días repetidos o de las rutinas sin programar.' },
+      { tipo: 'mejora', texto: 'La pantalla de Inicio queda solo para entrenar: los totales, las últimas sesiones y el cardio están en sus apartados, no repetidos ahí.' },
+      { tipo: 'mejora', texto: 'El botón de compartir la copia ahora comparte de verdad. Antes comprobaba antes de intentarlo y, si la comprobación fallaba, descargaba el archivo: hacía lo mismo que el botón de guardar.' },
+      { tipo: 'mejora', texto: 'Los totales generales y las sesiones guardadas (con la opción de borrarlas) están en Progresión.' },
+    ],
+  },
+  {
     version: '1.4.0',
     fecha: '2026-09-16',
     titulo: 'Ayuda, equilibrio muscular y compartir la copia',

@@ -126,6 +126,14 @@ export interface Routine {
   exercises: RoutineExercise[]
   /** Marca la rutina que se propone al abrir una sesion vacia. */
   isDefault?: boolean
+  /**
+   * Dias de la semana en que toca esta rutina (0 = domingo, 1 = lunes...).
+   *
+   * Va en la RUTINA y no en el codigo, que es como estaba antes: los dias estaban escritos a mano
+   * (A lunes, B miercoles, C viernes) y no habia forma de cambiarlos sin tocar el programa. Se
+   * guarda una lista porque la misma rutina puede tocar dos dias (por ejemplo lunes y jueves).
+   */
+  weekdays?: number[]
   createdAt: number
   updatedAt: number
 }

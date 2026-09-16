@@ -48,7 +48,7 @@ try {
 
   /* =========================== 1. AYUDA / FAQ =========================== */
   console.log('--- 1. Ayuda e instrucciones ---')
-  await page.getByRole('button', { name: /Ayuda e instrucciones/ }).click()
+  await page.getByRole('button', { name: /^📖 Ayuda$|Ayuda e instrucciones/ }).first().click()
   await page.waitForTimeout(1200)
   const ayuda = await page.locator('body').innerText()
   check('Se abre la ayuda', /Ayuda/i.test(ayuda) && /¿En qué te ayudo\?/i.test(ayuda))
@@ -94,7 +94,7 @@ try {
 
   /* ================== 2. Entrenar dos veces, para comparar ============== */
   console.log('\n--- 2. Entrenar: primera vez y segunda vez ---')
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 12000 })
@@ -117,7 +117,7 @@ try {
   await page.waitForTimeout(2500)
 
   // Segunda sesion del mismo ejercicio, con mas peso.
-  await page.getByText('Empezar entrenamiento').click()
+  await page.getByRole('button', { name: /Hacer otra cosa|Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza A' }).first().click()
   await page.waitForSelector('.exercise-card', { timeout: 12000 })
@@ -174,7 +174,7 @@ try {
     /Última copia|Todavía no has hecho ninguna copia/i.test(inicio),
     inicio.match(/(Última copia|Todavía no has hecho)[^\n]*/)?.[0] ?? '',
   )
-  check('Y hay acceso a la ayuda desde Inicio', /Ayuda e instrucciones/i.test(inicio))
+  check('Y hay acceso a la ayuda desde Inicio', /Ayuda/i.test(inicio), inicio.match(/[^\n]*Ayuda[^\n]*/)?.[0] ?? '')
 
   // En este navegador de pruebas no hay funcion de compartir: debe descargar el archivo.
   const descargas = []
@@ -188,9 +188,19 @@ try {
   )
   check('El archivo lleva la fecha en el nombre', /^kairos-copia-\d{4}-\d{2}-\d{2}\.json$/.test(descargas[0] ?? ''), descargas[0] ?? '')
 
-  await page.waitForTimeout(1200)
-  const trasCopiar = await page.locator('body').innerText()
-  check('Y la app dice que la copia está hecha', /Última copia: hoy/i.test(trasCopiar), trasCopiar.match(/Última copia[^\n]*/)?.[0] ?? '')
+  /*
+   * Que la copia quede anotada se comprueba en AJUSTES, que es el sitio fiable: en la portada el
+   * aviso DESAPARECE al hacer la copia (que es lo correcto: ya no hay nada que recordar).
+   */
+  await page.waitForTimeout(1500)
+  await page.locator('.nav button', { hasText: 'Ajustes' }).click()
+  await page.waitForTimeout(1500)
+  const enAjustes = await page.locator('body').innerText()
+  check(
+    'Y la app anota que la copia está hecha',
+    /Última copia[\s\S]{0,20}hoy/i.test(enAjustes),
+    enAjustes.match(/Última copia[\s\S]{0,20}/)?.[0]?.replace(/\n/g, ': ') ?? 'no lo anota',
+  )
 
   check('Sin errores de JavaScript en todo el recorrido', errores.length === 0, errores.join(' | '))
 } finally {
