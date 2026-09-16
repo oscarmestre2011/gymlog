@@ -3,6 +3,7 @@ import type { Routine, Settings } from '../types'
 import {
   deleteSession,
   getActiveSession,
+  getDatosDeAnalisis,
   getStats,
   listCardio,
   listRoutines,
@@ -10,6 +11,7 @@ import {
 } from '../db/repository'
 import { useQuery } from '../hooks'
 import { diaDeLaFecha, rutinasDelDia } from '../lib/planificacion'
+import { resumenDeLaSemana } from '../lib/analisis'
 import { listMeasurements } from '../db/repository'
 import { MeasurementReminder } from '../components/MeasurementReminder'
 import { descargarCopiaDeSeguridad, compartirCopiaDeSeguridad } from '../lib/descargar'
@@ -18,6 +20,7 @@ import { ConfirmDialog } from '../components/Modal'
 import { RoutinePicker } from '../components/RoutinePicker'
 import {
   formatDuration,
+  formatKilograms,
   formatKilometers,
   prettyDate,
   todayISO,
@@ -55,6 +58,15 @@ export function HomeScreen({
   const { data: routines } = useQuery(() => listRoutines(), [])
 
   const { data: stats } = useQuery(() => getStats(), [refreshKey])
+  const { data: datosSemana } = useQuery(() => getDatosDeAnalisis(), [refreshKey])
+  /** Como va la semana en curso: es lo que se mira al abrir la app. */
+  const resumen = useMemo(
+    () =>
+      datosSemana
+        ? resumenDeLaSemana(datosSemana.sessions, datosSemana.sets, datosSemana.cardio)
+        : null,
+    [datosSemana],
+  )
   const { data: cardio } = useQuery(() => listCardio(3), [refreshKey])
   const { data: mediciones } = useQuery(() => listMeasurements(), [refreshKey], [])
   const { data: active } = useQuery(() => getActiveSession(), [refreshKey])
@@ -158,6 +170,54 @@ export function HomeScreen({
           </button>
         </div>
       )}
+
+      {/*
+        COMO VA LA SEMANA: dias entrenados, kilos y kilometros acumulados, y la racha de semanas
+        seguidas. Es lo que el usuario quiere ver al abrir: la semana en curso, no los totales de
+        siempre (esos estan en Progresion).
+      */}
+      {resumen ? (
+        <div className="card">
+          <div className="row between" style={{ marginBottom: 10 }}>
+            <h2 className="card-title" style={{ margin: 0 }}>
+              Esta semana
+            </h2>
+            {resumen.rachaSemanas > 1 ? (
+              <span className="badge live" title="Semanas seguidas entrenando">
+                🔥 {resumen.rachaSemanas} semanas seguidas
+              </span>
+            ) : null}
+          </div>
+          <div className="stats">
+            <div className="stat">
+              <div className="value">
+                {resumen.diasEntrenados}
+                <span className="small muted" style={{ fontWeight: 500 }}> días</span>
+              </div>
+              <div className="label">entrenados</div>
+            </div>
+            <div className="stat">
+              <div className="value">{formatKilograms(resumen.volumen)}</div>
+              <div className="label">levantados</div>
+            </div>
+            <div className="stat">
+              <div className="value">{formatKilometers(resumen.cardioKm)}</div>
+              <div className="label">de cardio</div>
+            </div>
+          </div>
+          {resumen.diasEntrenados === 0 && resumen.cardioKm === 0 ? (
+            <p className="tiny muted" style={{ margin: '8px 0 0' }}>
+              Todavía no has entrenado esta semana. La semana empieza el lunes.
+            </p>
+          ) : (
+            <p className="tiny muted" style={{ margin: '8px 0 0' }}>
+              {resumen.series} series
+              {resumen.cardioMin > 0 ? ` · ${formatDuration(resumen.cardioMin * 60)} de cardio` : ''}
+              {' · '}la semana empieza el lunes
+            </p>
+          )}
+        </div>
+      ) : null}
 
       {/*
         Aviso de copia de seguridad. Los datos viven solo en este movil: si se borran los datos del

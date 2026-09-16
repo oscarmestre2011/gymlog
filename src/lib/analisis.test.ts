@@ -10,7 +10,9 @@ import {
   compararSerie,
   desequilibrio,
   diasConActividad,
+  rachaDeSemanas,
   resumenConstancia,
+  resumenDeLaSemana,
   semanaCompleta,
   volumenPorGrupo,
   volumenSemanalPorGrupo,
@@ -374,5 +376,111 @@ describe('días con actividad', () => {
     expect(resumen.soloFuerza).toBe(1)
     expect(resumen.soloCardio).toBe(1)
     expect(resumen.ambos).toBe(1)
+  })
+})
+
+describe('resumen de la semana en curso', () => {
+  /*
+   * Es lo que el usuario quiere ver al abrir la app: como va ESTA semana (dias entrenados, kilos
+   * levantados y kilometros), no los totales de siempre.
+   */
+  const hoy = new Date(2026, 8, 16) // miercoles 16 de septiembre de 2026
+
+  it('cuenta los dias entrenados y las sesiones de esta semana', () => {
+    const sesiones = [
+      sesion('s1', '2026-09-14'), // lunes de esta semana
+      sesion('s2', '2026-09-16'), // miercoles
+      sesion('s3', '2026-09-16'), // segundo entrenamiento del miercoles
+      sesion('s4', '2026-09-13'), // domingo de la semana ANTERIOR
+    ]
+    const resumen = resumenDeLaSemana(sesiones, [], [], hoy)
+    expect(resumen.diasEntrenados).toBe(2) // lunes y miercoles
+    expect(resumen.sesiones).toBe(3) // tres entrenamientos
+  })
+
+  it('suma el volumen de la semana, sin contar aproximaciones', () => {
+    const sesiones = [sesion('s1', '2026-09-14'), sesion('s2', '2026-09-16')]
+    const series = [
+      serie('s1', 'sentadilla', 'Back squat', { weight: 60, reps: 10 }),
+      serie('s1', 'sentadilla', 'Back squat', { weight: 60, reps: 10, setNumber: 2 }),
+      serie('s2', 'banca', 'Press banca', { weight: 40, reps: 10 }),
+      serie('s2', 'banca', 'Press banca', { weight: 80, reps: 10, isWarmup: true }),
+      // De la semana pasada: no cuenta.
+      serie('s3', 'sentadilla', 'Back squat', { weight: 100, reps: 10 }),
+    ]
+    const resumen = resumenDeLaSemana(sesiones, series, [], hoy)
+    expect(resumen.volumen).toBe(1600) // 600 + 600 + 400
+    expect(resumen.series).toBe(3)
+  })
+
+  it('suma los kilometros de cardio de la semana', () => {
+    const entradas = [
+      cardio('c1', '2026-09-15', { distanceKm: 20, durationMin: 50 }),
+      cardio('c2', '2026-09-16', { distanceKm: 12.5, durationMin: 30 }),
+      cardio('c3', '2026-09-13', { distanceKm: 30, durationMin: 60 }), // semana pasada
+    ]
+    const resumen = resumenDeLaSemana([], [], entradas, hoy)
+    expect(resumen.cardioKm).toBe(32.5)
+    expect(resumen.cardioMin).toBe(80)
+  })
+
+  it('con la semana vacia, todo a cero', () => {
+    const resumen = resumenDeLaSemana([], [], [], hoy)
+    expect(resumen).toMatchObject({ diasEntrenados: 0, volumen: 0, cardioKm: 0, rachaSemanas: 0 })
+  })
+
+  it('la semana empieza el lunes', () => {
+    // El domingo 13 pertenece a la semana anterior, no a la del 14.
+    const domingoAnterior = [sesion('s1', '2026-09-13')]
+    expect(resumenDeLaSemana(domingoAnterior, [], [], hoy).diasEntrenados).toBe(0)
+    const lunes = [sesion('s1', '2026-09-14')]
+    expect(resumenDeLaSemana(lunes, [], [], hoy).diasEntrenados).toBe(1)
+  })
+})
+
+describe('racha de semanas seguidas', () => {
+  const hoy = new Date(2026, 8, 16) // miercoles
+
+  it('cuenta las semanas seguidas con entrenamiento', () => {
+    const sesiones = [
+      sesion('s1', '2026-09-15'), // esta semana
+      sesion('s2', '2026-09-08'), // anterior
+      sesion('s3', '2026-09-01'), // dos atras
+      sesion('s4', '2026-08-18'), // hace un mes: rompe la racha
+    ]
+    expect(rachaDeSemanas(sesiones, hoy)).toBe(3)
+  })
+
+  it('si esta semana aun no se ha entrenado, la racha no se ha roto', () => {
+    // La semana en curso no ha terminado: se cuenta desde la anterior.
+    const sesiones = [sesion('s1', '2026-09-09'), sesion('s2', '2026-09-02')]
+    expect(rachaDeSemanas(sesiones, hoy)).toBe(2)
+  })
+
+  it('sin entrenamientos no hay racha', () => {
+    expect(rachaDeSemanas([], hoy)).toBe(0)
+  })
+
+  it('una sola semana cuenta como uno', () => {
+    expect(rachaDeSemanas([sesion('s1', '2026-09-15')], hoy)).toBe(1)
+  })
+
+  it('un hueco la corta', () => {
+    const sesiones = [
+      sesion('s1', '2026-09-15'), // esta
+      // falta la del 8
+      sesion('s3', '2026-09-01'),
+      sesion('s4', '2026-08-25'),
+    ]
+    expect(rachaDeSemanas(sesiones, hoy)).toBe(1)
+  })
+
+  it('varias sesiones la misma semana cuentan como una', () => {
+    const sesiones = [
+      sesion('s1', '2026-09-14'),
+      sesion('s2', '2026-09-16'),
+      sesion('s3', '2026-09-09'),
+    ]
+    expect(rachaDeSemanas(sesiones, hoy)).toBe(2)
   })
 })

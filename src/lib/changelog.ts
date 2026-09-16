@@ -37,6 +37,15 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.6.0',
+    fecha: '2026-09-16',
+    titulo: 'La semana en curso en Inicio, y el equilibrio muscular en barras',
+    cambios: [
+      { tipo: 'nuevo', texto: 'Inicio resume la semana en curso: días entrenados, kilos levantados y kilómetros de cardio, más las semanas seguidas que llevas.' },
+      { tipo: 'mejora', texto: 'El volumen por grupo muscular se ve en un gráfico de barras: comparar alturas se lee mejor que una lista, y cada barra lleva su número exacto.' },
+    ],
+  },
+  {
     version: '1.5.0',
     fecha: '2026-09-16',
     titulo: 'Los entrenamientos se programan por días',

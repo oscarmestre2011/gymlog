@@ -613,7 +613,7 @@ export function SettingsScreen({
         </div>
         <div className="kv">
           <span className="k">Versión</span>
-          <span className="v">1.5.0</span>
+          <span className="v">1.6.0</span>
         </div>
         <div className="kv">
           <span className="k">Funciona sin conexión</span>

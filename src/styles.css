@@ -954,6 +954,75 @@ tr.down td.num {
   color: var(--danger);
 }
 
+/* --------------------- volumen por grupo muscular ------------------------ */
+
+/*
+ * Grafico de BARRAS VERTICALES, una por grupo muscular: la altura es el total de series del grupo.
+ * Comparar alturas se lee mejor que una lista.
+ *
+ * OJO CON LAS ALTURAS, que aqui hubo un fallo: la barra mide en PORCENTAJE, asi que su contenedor
+ * tiene que tener una altura FIJA. Con `height: 100%` dentro de un contenedor cuya altura sale del
+ * contenido, el navegador no puede resolver el porcentaje y TODAS las barras salen iguales (se
+ * midieron: grupos de 8, 6 y 3 series daban los tres 21 px).
+ *
+ * Se hace con flexbox y no con una libreria de graficas: son barras sencillas, y esta app tiene que
+ * funcionar sin conexion y pesar poco.
+ */
+.grafico-grupos {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding-top: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.grafico-grupos::-webkit-scrollbar {
+  display: none;
+}
+
+.columna-grupo {
+  flex: 1 0 42px;
+  min-width: 42px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+/* El numero, encima de la barra: se lee el valor exacto sin tener que estimarlo por la altura. */
+.columna-valor {
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Altura FIJA: es la referencia que usa la barra para calcular su porcentaje. */
+.columna-barra {
+  height: 96px;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.columna-relleno {
+  display: block;
+  width: 72%;
+  min-height: 4px;
+  border-radius: 4px 4px 2px 2px;
+  background: linear-gradient(180deg, var(--accent) 0%, rgba(74, 222, 128, 0.35) 100%);
+}
+
+.columna-nombre {
+  font-size: 0.62rem;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.05;
+  max-width: 58px;
+  overflow-wrap: anywhere;
+}
+
 /* --------------------------------- grafico ------------------------------- */
 
 .spark {

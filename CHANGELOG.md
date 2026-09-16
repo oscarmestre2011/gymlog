@@ -3,6 +3,24 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.6.0 — La semana en curso en Inicio, y el equilibrio muscular en barras
+
+_2026-09-16_
+
+- **Nuevo:** Inicio resume la semana en curso: días entrenados, kilos levantados y kilómetros de cardio, más las semanas seguidas que llevas.
+- **Mejorado:** El volumen por grupo muscular se ve en un gráfico de barras: comparar alturas se lee mejor que una lista, y cada barra lleva su número exacto.
+
+## 1.5.0 — Los entrenamientos se programan por días
+
+_2026-09-16_
+
+- **Nuevo:** Cada rutina tiene sus días: se eligen al prepararla (con la ✎ de su tarjeta) y pueden ser varios, por ejemplo lunes y jueves.
+- **Nuevo:** En Inicio aparece el entrenamiento que toca ese día, con sus ejercicios, y se empieza con un toque. Si ese día no hay nada programado, lo dice en vez de proponer otra cosa.
+- **Nuevo:** En Rutinas hay un resumen de la semana con lo que toca cada día, y avisa de los días repetidos o de las rutinas sin programar.
+- **Mejorado:** La pantalla de Inicio queda solo para entrenar: los totales, las últimas sesiones y el cardio están en sus apartados, no repetidos ahí.
+- **Mejorado:** El botón de compartir la copia ahora comparte de verdad. Antes comprobaba antes de intentarlo y, si la comprobación fallaba, descargaba el archivo: hacía lo mismo que el botón de guardar.
+- **Mejorado:** Los totales generales y las sesiones guardadas (con la opción de borrarlas) están en Progresión.
+
 ## 1.4.0 — Ayuda, equilibrio muscular y compartir la copia
 
 _2026-09-16_

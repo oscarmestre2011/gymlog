@@ -150,6 +150,32 @@ try {
   await page.waitForTimeout(1500)
   const progreso = await page.locator('body').innerText()
   check('Progresión muestra el volumen por grupo muscular', /Volumen por grupo muscular/i.test(progreso))
+  /*
+   * El volumen por grupo se ve en un GRAFICO DE BARRAS: la altura de cada barra es el total del
+   * grupo. Se comprueba que hay una columna por grupo y que las alturas son distintas (si todas
+   * fueran iguales, la grafica no diria nada).
+   */
+  const columnas = await page.locator('.columna-grupo').count()
+  check('El volumen se ve en un gráfico de barras', columnas > 0, `${columnas} columnas`)
+  const alturas = await page.evaluate(() =>
+    [...document.querySelectorAll('.columna-relleno')].map((c) => Math.round(c.getBoundingClientRect().height)),
+  )
+  /*
+   * Con un solo grupo con datos hay una sola barra, y eso es correcto: no se puede exigir que las
+   * alturas sean distintas si solo hay una. Lo que si se exige siempre es que las barras tengan
+   * altura visible (que no se dibujen a cero).
+   */
+  check(
+    'Las barras se dibujan con altura (no salen a cero)',
+    alturas.length > 0 && alturas.every((a) => a >= 4),
+    `alturas: ${alturas.join(', ')} px`,
+  )
+  check(
+    'Cada barra dice su nombre y su número',
+    (await page.locator('.columna-nombre').count()) === columnas &&
+      (await page.locator('.columna-valor').count()) === columnas,
+    `${columnas} nombres y valores`,
+  )
   check('Con los grupos y sus series', /Cuadriceps|Pecho|Espalda/i.test(progreso), progreso.match(/Cuadriceps[^\n]*/)?.[0] ?? '')
   check('Explica para qué sirve', /equilibrio/i.test(progreso))
   check('Avisa de que las de aproximación no cuentan', /aproximación no cuentan/i.test(progreso))
@@ -164,6 +190,15 @@ try {
   await page.waitForTimeout(1200)
   const inicio = await page.locator('body').innerText()
   check('Inicio ofrece compartir la copia', /Compartir copia/i.test(inicio))
+  /*
+   * "Esta semana": dias entrenados, kilos y kilometros de la semana en curso. Es lo que se mira al
+   * abrir la app.
+   */
+  check('La portada resume la semana en curso', /Esta semana/i.test(inicio), inicio.match(/Esta semana[\s\S]{0,60}/)?.[0]?.replace(/\n/g, ' ') ?? '')
+  check('Con los días entrenados', /días/i.test(inicio) && /entrenados/i.test(inicio))
+  check('Con los kilos de la semana', /levantados/i.test(inicio))
+  check('Y con los kilómetros de cardio', /de cardio/i.test(inicio))
+  check('Dice también la racha de semanas', /semanas seguidas|semana empieza el lunes/i.test(inicio))
   /*
    * Antes de la primera copia el texto es "Todavía no has hecho ninguna copia", y despues
    * "Última copia: ...". Las dos formas son correctas: lo que importa es que diga en que punto

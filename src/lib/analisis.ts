@@ -316,6 +316,108 @@ export function diasConActividad(
   return [...porDia.values()].sort((a, b) => b.date.localeCompare(a.date)).slice(0, limit)
 }
 
+export interface ResumenSemana {
+  /** Dias distintos con entrenamiento de fuerza esta semana. */
+  diasEntrenados: number
+  /** Sesiones de fuerza (puede haber dos el mismo dia). */
+  sesiones: number
+  /** Volumen acumulado de la semana, en kg. */
+  volumen: number
+  series: number
+  /** Kilometros de cardio de la semana. */
+  cardioKm: number
+  cardioMin: number
+  /** Semanas seguidas entrenando, contando desde la actual hacia atras. */
+  rachaSemanas: number
+}
+
+/**
+ * Resumen de la SEMANA EN CURSO: dias entrenados, kilos y kilometros acumulados.
+ *
+ * Es lo que el usuario quiere ver al abrir la app: como va esta semana. Se calcula sobre la semana
+ * ISO (empieza el lunes), que es como se planifica el entrenamiento.
+ *
+ * La racha se cuenta en semanas SEGUIDAS con al menos un entrenamiento, contando hacia atras desde
+ * la semana actual. Si esta semana todavia no se ha entrenado, la racha no se rompe: se cuenta desde
+ * la semana pasada, porque aun queda semana por delante.
+ */
+export function resumenDeLaSemana(
+  sessions: Session[],
+  sets: ExerciseSet[],
+  cardio: CardioEntry[],
+  hoy = new Date(),
+): ResumenSemana {
+  const lunesActual = startOfWeekISO(
+    `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`,
+  )
+
+  const dias = new Set<string>()
+  let sesiones = 0
+  for (const session of sessions) {
+    if (startOfWeekISO(session.date) !== lunesActual) continue
+    dias.add(session.date)
+    sesiones += 1
+  }
+
+  const idsDeLaSemana = new Set(
+    sessions.filter((s) => startOfWeekISO(s.date) === lunesActual).map((s) => s.id),
+  )
+  let volumen = 0
+  let series = 0
+  for (const serie of sets) {
+    if (serie.isWarmup) continue
+    if (!idsDeLaSemana.has(serie.sessionId)) continue
+    volumen += serie.weight * serie.reps
+    series += 1
+  }
+
+  let cardioKm = 0
+  let cardioMin = 0
+  for (const entrada of cardio) {
+    if (startOfWeekISO(entrada.date) !== lunesActual) continue
+    cardioKm += entrada.distanceKm ?? 0
+    cardioMin += entrada.durationMin
+  }
+
+  return {
+    diasEntrenados: dias.size,
+    sesiones,
+    volumen,
+    series,
+    cardioKm: Math.round(cardioKm * 100) / 100,
+    cardioMin,
+    rachaSemanas: rachaDeSemanas(sessions, hoy),
+  }
+}
+
+/** Semanas seguidas con al menos un entrenamiento, contando hacia atras. */
+export function rachaDeSemanas(sessions: Session[], hoy = new Date()): number {
+  if (sessions.length === 0) return 0
+  const conActividad = new Set(sessions.map((s) => startOfWeekISO(s.date)))
+
+  const fecha = new Date(hoy)
+  const iso = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  // Si esta semana aun no se ha entrenado, se empieza a contar desde la anterior: la semana en
+  // curso no ha terminado, asi que no se ha roto la racha.
+  let lunes = startOfWeekISO(iso(fecha))
+  if (!conActividad.has(lunes)) {
+    fecha.setDate(fecha.getDate() - 7)
+    lunes = startOfWeekISO(iso(fecha))
+  }
+
+  let racha = 0
+  for (let i = 0; i < 200; i += 1) {
+    if (!conActividad.has(lunes)) break
+    racha += 1
+    const anterior = new Date(lunes)
+    anterior.setDate(anterior.getDate() - 7)
+    lunes = iso(anterior)
+  }
+  return racha
+}
+
 /** Cuantos dias de las ultimas cuatro semanas tuvieron actividad. */
 export function resumenConstancia(dias: DiaConActividad[], semanas = 4): { diasActivos: number; soloFuerza: number; soloCardio: number; ambos: number } {
   const desde = new Date()

@@ -406,19 +406,22 @@ export function ProgressScreen({
             </p>
           ) : null}
 
-          <div className="tabla-grupos">
+          {/*
+            GRAFICO DE BARRAS VERTICALES: la altura de cada barra es el total de series del grupo,
+            y debajo va su nombre y el numero. Comparar alturas se lee mejor que una lista con
+            barras horizontales, sobre todo cuando hay muchos grupos.
+          */}
+          <div className="grafico-grupos">
             {grupos.map((g) => {
               const maximo = Math.max(...grupos.map((x) => x.total))
+              const alto = maximo > 0 ? Math.max(6, (g.total / maximo) * 100) : 6
               return (
-                <div key={g.grupo} className="fila-grupo">
-                  <span className="nombre">{g.grupo}</span>
-                  <span className="barra">
-                    <span
-                      className="relleno"
-                      style={{ width: `${maximo > 0 ? (g.total / maximo) * 100 : 0}%` }}
-                    />
+                <div key={g.grupo} className="columna-grupo" title={`${g.grupo}: ${g.total} series`}>
+                  <span className="columna-valor">{g.total}</span>
+                  <span className="columna-barra">
+                    <span className="columna-relleno" style={{ height: `${alto}%` }} />
                   </span>
-                  <span className="valor">{g.total}</span>
+                  <span className="columna-nombre">{g.grupo}</span>
                 </div>
               )
             })}
