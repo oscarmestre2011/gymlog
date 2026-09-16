@@ -37,6 +37,18 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.7.0',
+    fecha: '2026-09-16',
+    titulo: 'Cardio por series y fartlek',
+    cambios: [
+      { tipo: 'nuevo', texto: 'El cardio se puede apuntar por TRAMOS: series (tramos fuertes con recuperaciones) y fartlek (cambios de ritmo). Antes solo había un bloque continuo.' },
+      { tipo: 'nuevo', texto: 'Cada tramo lleva sus minutos, sus kilómetros y su intensidad (recuperación, suave, medio, fuerte o a tope), con una marca de color para ver la estructura de un vistazo.' },
+      { tipo: 'nuevo', texto: 'Atajos para no empezar de cero: «+ Tramo» y «⚡ +4 series», que añade una estructura de calentamiento, series con recuperaciones y vuelta a la calma.' },
+      { tipo: 'nuevo', texto: 'Cada entrenamiento por series dice cuántos tramos fuertes hizo, y el tiempo total sale de sumar los tramos.' },
+      { tipo: 'mejora', texto: 'El cardio continuo sigue igual: si no se elige series ni fartlek, todo funciona como antes.' },
+    ],
+  },
+  {
     version: '1.6.0',
     fecha: '2026-09-16',
     titulo: 'La semana en curso en Inicio, y el equilibrio muscular en barras',

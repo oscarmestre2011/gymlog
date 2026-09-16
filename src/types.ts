@@ -160,6 +160,30 @@ export interface ExerciseSet {
   completedAt: number
 }
 
+/** Intensidad de un tramo de cardio. */
+export type IntensidadCardio = 'suave' | 'medio' | 'fuerte' | 'maximo' | 'recuperacion'
+
+/**
+ * Un tramo de un entrenamiento por series o fartlek.
+ *
+ * Para que sirve: un entrenamiento de series no es un bloque continuo, son tramos con ritmos
+ * distintos (calentamiento, series fuertes con recuperaciones, vuelta a la calma). Guardarlo asi
+ * permite ver despues QUE se hizo, no solo el total.
+ *
+ * Todos los campos son opcionales porque los tramos se apuntan de formas muy distintas: unos con
+ * tiempo, otros con distancia, y el ritmo a veces se sabe y a veces no.
+ */
+export interface CardioSegmento {
+  id: string
+  /** Minutos del tramo. */
+  durationMin?: number
+  /** Kilometros del tramo. */
+  distanceKm?: number
+  intensidad: IntensidadCardio
+  /** Nota del tramo: "cuesta arriba", "en llano", "a tope"... */
+  notes?: string
+}
+
 export interface CardioEntry {
   id: string
   sessionId?: string
@@ -170,6 +194,17 @@ export interface CardioEntry {
   durationMin: number
   /** Kilometros. */
   distanceKm?: number
+  /**
+   * Como fue el entrenamiento.
+   * - 'continuo': un bloque al mismo ritmo (lo de siempre).
+   * - 'series': tramos fuertes con recuperaciones entre ellos.
+   * - 'fartlek': cambios de ritmo sin estructura fija.
+   *
+   * Si no viene (entradas antiguas) se entiende 'continuo'.
+   */
+  tipo?: 'continuo' | 'series' | 'fartlek'
+  /** Los tramos, cuando es por series o fartlek. */
+  segmentos?: CardioSegmento[]
   /** Metros de desnivel positivo. */
   elevationM?: number
   avgHr?: number

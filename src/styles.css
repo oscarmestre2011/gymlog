@@ -1023,6 +1023,82 @@ tr.down td.num {
   overflow-wrap: anywhere;
 }
 
+/* ------------------------- cardio por series ---------------------------- */
+
+.tramos {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/*
+ * Cada tramo: una marca de color a la izquierda (segun la intensidad), el numero, los campos de
+ * minutos y kilometros, y debajo los botones de intensidad.
+ *
+ * La marca de color permite ver de un vistazo la ESTRUCTURA del entrenamiento (cuanto fuerte y
+ * cuanto suave) sin leer los numeros, que es justo lo que se quiere ver de un entrenamiento de
+ * series.
+ */
+.tramo {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  background: var(--bg-elev-2);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.tramo-marca {
+  flex: 0 0 4px;
+  border-radius: 2px;
+  background: var(--text-dim);
+}
+
+/* Colores de intensidad: de azul (recuperacion) a rojo (a tope). */
+.tramo-marca.nivel-1 {
+  background: #6ba8d8;
+}
+
+.tramo-marca.nivel-2 {
+  background: #7cc4ff;
+}
+
+.tramo-marca.nivel-3 {
+  background: var(--warn);
+}
+
+.tramo-marca.nivel-4 {
+  background: #e8843c;
+}
+
+.tramo-marca.nivel-5 {
+  background: var(--danger);
+}
+
+.tramo-campos {
+  flex: 1;
+  min-width: 0;
+}
+
+.tramo-fila {
+  display: grid;
+  grid-template-columns: 20px 1fr 1fr 32px;
+  gap: 6px;
+  align-items: center;
+}
+
+.tramo-numero {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Chips pequenos para las intensidades, que son cinco y tienen que caber. */
+.chip.sm {
+  padding: 3px 8px;
+  font-size: 0.68rem;
+}
+
 /* --------------------------------- grafico ------------------------------- */
 
 .spark {

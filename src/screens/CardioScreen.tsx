@@ -1,7 +1,19 @@
 import { useState } from 'react'
-import type { CardioEntry } from '../types'
-import { deleteCardio, listCardio, listSessionsByDate, saveCardio } from '../db/repository'
+import type { CardioEntry, IntensidadCardio } from '../types'
+import {
+  INTENSIDADES,
+  TIPOS_CARDIO,
+  contarSeries,
+  nivelIntensidad,
+  plantillaDeFartlek,
+  plantillaDeSeries,
+  resumenDeSeries,
+  tipoDe,
+  totalesDe,
+  tramoNuevo,
+} from '../lib/cardio'
 import { newId } from '../db'
+import { deleteCardio, listCardio, listSessionsByDate, saveCardio } from '../db/repository'
 import { useQuery } from '../hooks'
 import { ConfirmDialog, Modal } from '../components/Modal'
 import { NumberInput } from '../components/NumberInput'
@@ -120,22 +132,37 @@ export function CardioScreen({ notify }: { notify: (message: string) => void }) 
       ) : null}
 
       {entries?.map((entry) => {
-        const seconds = entry.durationMin * 60
-        const pace = paceMinPerKm(entry.distanceKm, seconds)
-        const speed = speedKmh(entry.distanceKm, seconds)
+        /*
+         * Los totales se calculan con totalesDe: en un entrenamiento por series salen de la suma de
+         * los tramos (que es lo que se apunto), y en un continuo de sus propios campos.
+         */
+        const totales = totalesDe(entry)
+        const km = totales.km
+        const seconds = totales.minutos * 60
+        const pace = paceMinPerKm(km, seconds)
+        const speed = speedKmh(km, seconds)
         const isCarrera = /carrera|marcha|caminata|cinta/i.test(entry.activity)
+        const resumen = resumenDeSeries(entry.segmentos ?? [])
 
         return (
           <div key={entry.id} className="card">
             <div className="row between" style={{ alignItems: 'flex-start' }}>
               <div className="grow">
                 <div style={{ fontWeight: 700 }}>
-                  {entry.activity} · {prettyDate(entry.date)}
+                  {entry.activity}
+                  {tipoDe(entry) !== 'continuo' ? (
+                    <span className="badge" style={{ marginLeft: 6 }}>
+                      {tipoDe(entry) === 'series' ? 'series' : 'fartlek'}
+                    </span>
+                  ) : null}
+                  {' · '}
+                  {prettyDate(entry.date)}
                 </div>
                 <div className="small muted">
                   {formatDuration(seconds)}
-                  {entry.distanceKm ? ` · ${formatNumber(entry.distanceKm)} km` : ''}
+                  {km ? ` · ${formatNumber(km)} km` : ''}
                   {entry.elevationM ? ` · +${entry.elevationM} m` : ''}
+                  {resumen ? ` · ${resumen}` : ''}
                 </div>
               </div>
               <button
@@ -238,6 +265,11 @@ function CardioEditor({
 
   const { data: sessionsToday } = useQuery(() => listSessionsByDate(draft.date), [draft.date], [])
 
+  const esPorTramos = tipoDe(draft) !== 'continuo'
+  const totalesTramos = totalesDe(draft)
+  const seriesContadas = contarSeries(draft.segmentos ?? [])
+  const resumenTramos = resumenDeSeries(draft.segmentos ?? [])
+
   const seconds = draft.durationMin * 60
   const pace = paceMinPerKm(draft.distanceKm, seconds)
   const speed = speedKmh(draft.distanceKm, seconds)
@@ -265,10 +297,14 @@ function CardioEditor({
             className="btn primary grow"
             onClick={() => {
               const parsed = parseDurationInput(durationText)
-              const finalEntry: CardioEntry = {
-                ...draft,
-                durationMin: parsed && parsed > 0 ? parsed / 60 : draft.durationMin,
-              }
+              /*
+               * En un entrenamiento por series, el total se pone a la SUMA DE LOS TRAMOS: si se
+               * dejara el total del formulario continuo, quedaria guardado un dato que contradice a
+               * los tramos (se detecto con una prueba: 47 minutos en los tramos y 60 guardados).
+               */
+              const finalEntry: CardioEntry = esPorTramos
+                ? { ...draft, durationMin: totalesTramos.minutos, distanceKm: totalesTramos.km || undefined }
+                : { ...draft, durationMin: parsed && parsed > 0 ? parsed / 60 : draft.durationMin }
               void onSave(finalEntry)
             }}
           >
@@ -277,7 +313,46 @@ function CardioEditor({
         </>
       }
     >
+      {/*
+        TIPO DE ENTRENAMIENTO. Antes solo se podia apuntar un bloque continuo; un entrenamiento de
+        series son tramos con ritmos distintos, y un fartlek son cambios de ritmo sin estructura.
+      */}
       <div className="field">
+        <label>Tipo de entrenamiento</label>
+        <div className="row wrap" style={{ gap: 6 }}>
+          {TIPOS_CARDIO.map((opcion) => (
+            <button
+              key={opcion.valor}
+              className={`chip${tipoDe(draft) === opcion.valor ? ' active' : ''}`}
+              onClick={() =>
+                setDraft((d) => {
+                  const tipo = opcion.valor
+                  if (tipo === 'continuo') {
+                    return { ...d, tipo, segmentos: undefined }
+                  }
+                  // Al pasar a series o fartlek se propone una plantilla, para no empezar de cero.
+                  if ((d.segmentos?.length ?? 0) > 0) return { ...d, tipo }
+                  return {
+                    ...d,
+                    tipo,
+                    segmentos:
+                      tipo === 'series'
+                        ? plantillaDeSeries(6, 3, 2, 10, 5, () => newId('cs_'))
+                        : plantillaDeFartlek(() => newId('cs_')),
+                  }
+                })
+              }
+            >
+              {opcion.texto}
+            </button>
+          ))}
+        </div>
+        <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+          {TIPOS_CARDIO.find((o) => o.valor === tipoDe(draft))?.ayuda}
+        </p>
+      </div>
+
+      <div className="field" style={{ marginTop: 12 }}>
         <label htmlFor="c-activity">Actividad</label>
         <div className="chips">
           {ACTIVITIES.map((activity) => (
@@ -292,7 +367,126 @@ function CardioEditor({
         </div>
       </div>
 
-      <div className="grid-2" style={{ marginTop: 12 }}>
+      {esPorTramos ? (
+        <div style={{ marginTop: 12 }}>
+          <div className="row between" style={{ marginBottom: 8 }}>
+            <label style={{ margin: 0 }}>Tramos ({draft.segmentos?.length ?? 0})</label>
+            <div className="row" style={{ gap: 6 }}>
+              <button
+                className="btn sm ghost"
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    segmentos: [...(d.segmentos ?? []), tramoNuevo('fuerte', newId('cs_'))],
+                  }))
+                }
+              >
+                ＋ Tramo
+              </button>
+              <button
+                className="btn sm ghost"
+                onClick={() =>
+                  setDraft((d) => ({
+                    ...d,
+                    segmentos: [
+                      ...(d.segmentos ?? []),
+                      ...plantillaDeSeries(4, 3, 2, 0, 0, () => newId('cs_')),
+                    ],
+                  }))
+                }
+                title="Añade 4 series con sus recuperaciones"
+              >
+                ⚡ +4 series
+              </button>
+            </div>
+          </div>
+
+          <div className="tramos">
+            {(draft.segmentos ?? []).map((tramo, indice) => (
+              <div key={tramo.id} className="tramo">
+                <span className={`tramo-marca nivel-${nivelIntensidad(tramo.intensidad)}`} aria-hidden="true" />
+                <div className="tramo-campos">
+                  <div className="tramo-fila">
+                    <span className="tramo-numero">{indice + 1}</span>
+                    <NumberInput
+                      value={tramo.durationMin}
+                      onChange={(v) =>
+                        setDraft((d) => ({
+                          ...d,
+                          segmentos: (d.segmentos ?? []).map((x) =>
+                            x.id === tramo.id ? { ...x, durationMin: v } : x,
+                          ),
+                        }))
+                      }
+                      placeholder="min"
+                      ariaLabel={`Minutos del tramo ${indice + 1}`}
+                    />
+                    <NumberInput
+                      value={tramo.distanceKm}
+                      onChange={(v) =>
+                        setDraft((d) => ({
+                          ...d,
+                          segmentos: (d.segmentos ?? []).map((x) =>
+                            x.id === tramo.id ? { ...x, distanceKm: v } : x,
+                          ),
+                        }))
+                      }
+                      placeholder="km"
+                      ariaLabel={`Kilómetros del tramo ${indice + 1}`}
+                    />
+                    <button
+                      className="icon-btn danger"
+                      onClick={() =>
+                        setDraft((d) => ({
+                          ...d,
+                          segmentos: (d.segmentos ?? []).filter((x) => x.id !== tramo.id),
+                        }))
+                      }
+                      aria-label={`Quitar el tramo ${indice + 1}`}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="chips" style={{ marginTop: 4 }}>
+                    {INTENSIDADES.map((opcion) => (
+                      <button
+                        key={opcion.valor}
+                        className={`chip sm${tramo.intensidad === opcion.valor ? ' active' : ''}`}
+                        onClick={() =>
+                          setDraft((d) => ({
+                            ...d,
+                            segmentos: (d.segmentos ?? []).map((x) =>
+                              x.id === tramo.id ? { ...x, intensidad: opcion.valor as IntensidadCardio } : x,
+                            ),
+                          }))
+                        }
+                      >
+                        {opcion.corto}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {resumenTramos ? (
+            <div className="notice info" style={{ marginTop: 10 }}>
+              <div>
+                Total: <b>{formatDuration(Math.round(totalesTramos.minutos * 60))}</b>
+                {totalesTramos.km > 0 ? ` · ${formatNumber(totalesTramos.km)} km` : ''}
+              </div>
+              {seriesContadas > 0 ? <div>{seriesContadas} series fuertes</div> : null}
+            </div>
+          ) : (
+            <p className="tiny muted" style={{ marginTop: 10 }}>
+              Añade tramos, o usa «⚡ +4 series» para empezar con una estructura y cambiarla.
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="grid-2" style={{ marginTop: 12 }}>
         <div className="field">
           <label htmlFor="c-date">Fecha</label>
           <input
@@ -344,6 +538,8 @@ function CardioEditor({
           />
         </div>
       </div>
+        </>
+      )}
 
       <div className="grid-2" style={{ marginTop: 12 }}>
         <div className="field">

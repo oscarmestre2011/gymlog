@@ -3,6 +3,16 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.7.0 — Cardio por series y fartlek
+
+_2026-09-16_
+
+- **Nuevo:** El cardio se puede apuntar por TRAMOS: series (tramos fuertes con recuperaciones) y fartlek (cambios de ritmo). Antes solo había un bloque continuo.
+- **Nuevo:** Cada tramo lleva sus minutos, sus kilómetros y su intensidad (recuperación, suave, medio, fuerte o a tope), con una marca de color para ver la estructura de un vistazo.
+- **Nuevo:** Atajos para no empezar de cero: «+ Tramo» y «⚡ +4 series», que añade una estructura de calentamiento, series con recuperaciones y vuelta a la calma.
+- **Nuevo:** Cada entrenamiento por series dice cuántos tramos fuertes hizo, y el tiempo total sale de sumar los tramos.
+- **Mejorado:** El cardio continuo sigue igual: si no se elige series ni fartlek, todo funciona como antes.
+
 ## 1.6.0 — La semana en curso en Inicio, y el equilibrio muscular en barras
 
 _2026-09-16_

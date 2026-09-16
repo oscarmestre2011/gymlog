@@ -7,6 +7,7 @@
 
 import type { CardioEntry, Exercise, ExerciseSet, Session } from '../types'
 import { startOfWeekISO } from './format'
+import { totalesDe } from './cardio'
 
 /* ------------------------------------------------------------------ */
 /* Volumen por grupo muscular                                          */
@@ -257,8 +258,13 @@ export function semanaCompleta(
 
   for (const entrada of cardio) {
     const actual = obtener(startOfWeekISO(entrada.date))
-    actual.cardioMin += entrada.durationMin
-    actual.cardioKm += entrada.distanceKm ?? 0
+    /*
+     * Se usan los totales calculados: en un entrenamiento por series o fartlek, la duracion y la
+     * distancia salen de la suma de sus tramos, no de un campo propio.
+     */
+    const totales = totalesDe(entrada)
+    actual.cardioMin += totales.minutos
+    actual.cardioKm += totales.km
     actual.cardioVeces += 1
   }
 
@@ -307,9 +313,10 @@ export function diasConActividad(
   for (const entrada of cardio) {
     const dia = obtener(entrada.date)
     dia.cardio = true
-    const resumen = entrada.distanceKm
-      ? `${entrada.activity} ${formato(entrada.distanceKm)} km`
-      : `${entrada.activity} ${entrada.durationMin} min`
+    const totales = totalesDe(entrada)
+    const resumen = totales.km
+      ? `${entrada.activity} ${formato(totales.km)} km`
+      : `${entrada.activity} ${Math.round(totales.minutos)} min`
     dia.detalle = dia.detalle ? `${dia.detalle} · ${resumen}` : resumen
   }
 
@@ -375,8 +382,9 @@ export function resumenDeLaSemana(
   let cardioMin = 0
   for (const entrada of cardio) {
     if (startOfWeekISO(entrada.date) !== lunesActual) continue
-    cardioKm += entrada.distanceKm ?? 0
-    cardioMin += entrada.durationMin
+    const totales = totalesDe(entrada)
+    cardioKm += totales.km
+    cardioMin += totales.minutos
   }
 
   return {
