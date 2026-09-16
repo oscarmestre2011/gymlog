@@ -3,6 +3,15 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.9.0 — Arreglados los estilos que faltaban (ayuda y plan de la semana)
+
+_2026-09-16_
+
+- **Arreglado:** La pantalla de Ayuda se veía mal: las preguntas salían como texto suelto, subrayado y difícil de leer. Le faltaban TODOS sus estilos.
+- **Arreglado:** El resumen de la semana en Rutinas también se quedó sin estilos: ahora cada día es una fila, con lo que toca y los huecos marcados.
+- **Mejorado:** Los accesos de la pantalla de inicio (copia, progreso, ayuda) son filas con su icono y su descripción, en lugar de tres textos blancos sueltos que no se leían como botones.
+- **Mejorado:** El texto de la ayuda se puede leer bien: contraste comprobado (6,6:1 en las preguntas y 4,5:1 en las respuestas) y sin subrayados.
+
 ## 1.8.0 — Series en metros o por tiempo, y plantilla de cuatro tramos
 
 _2026-09-16_

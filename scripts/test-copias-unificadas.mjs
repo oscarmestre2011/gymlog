@@ -91,13 +91,22 @@ try {
 
   /* ---------- 4. El orden enseña lo importante primero ---------------- */
   console.log('\n--- 4. El orden tiene sentido ---')
+  /*
+   * Se comprueba el ORDEN EN EL DOM y no buscando el texto con indexOf: innerText normaliza
+   * espacios y el separador de los titulos, asi que la busqueda por texto daba -1 aunque los
+   * titulos estuvieran en pantalla (y la comprobacion fallaba sin motivo).
+   */
   const posiciones = await page.evaluate(() => {
-    const texto = document.body.innerText
+    const porTexto = (aguja) =>
+      [...document.querySelectorAll('.card-title, .sub-title, .kv .k, .kv .v')].find((el) =>
+        (el.textContent ?? '').includes(aguja),
+      ) ?? null
+    const orden = (el) => (el ? [...document.querySelectorAll('.card, .card-title, .sub-title, .kv .k')].indexOf(el) : -1)
     return {
-      estado: texto.indexOf('Última copia'),
-      descargar: texto.indexOf('1 · Descargar el archivo'),
-      carpeta: texto.indexOf('2 · Copia automática'),
-      recordar: texto.indexOf('3 · Recordatorio'),
+      estado: orden(porTexto('Última copia')),
+      descargar: orden(porTexto('Descargar el archivo')),
+      carpeta: orden(porTexto('Copia automática')),
+      recordar: orden(porTexto('Recordatorio')),
     }
   })
   check(

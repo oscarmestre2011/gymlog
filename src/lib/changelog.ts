@@ -37,6 +37,17 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.9.0',
+    fecha: '2026-09-16',
+    titulo: 'Arreglados los estilos que faltaban (ayuda y plan de la semana)',
+    cambios: [
+      { tipo: 'arreglo', texto: 'La pantalla de Ayuda se veía mal: las preguntas salían como texto suelto, subrayado y difícil de leer. Le faltaban TODOS sus estilos.' },
+      { tipo: 'arreglo', texto: 'El resumen de la semana en Rutinas también se quedó sin estilos: ahora cada día es una fila, con lo que toca y los huecos marcados.' },
+      { tipo: 'mejora', texto: 'Los accesos de la pantalla de inicio (copia, progreso, ayuda) son filas con su icono y su descripción, en lugar de tres textos blancos sueltos que no se leían como botones.' },
+      { tipo: 'mejora', texto: 'El texto de la ayuda se puede leer bien: contraste comprobado (6,6:1 en las preguntas y 4,5:1 en las respuestas) y sin subrayados.' },
+    ],
+  },
+  {
     version: '1.8.0',
     fecha: '2026-09-16',
     titulo: 'Series en metros o por tiempo, y plantilla de cuatro tramos',

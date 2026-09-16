@@ -39,6 +39,16 @@ Ultima revision: 16 de septiembre de 2026, con la version **1.1.0** publicada.
 - **Ojo con los textos que se repiten en varios botones.** Ya ha pasado tres veces (dos "Cada mes",
   dos "Ajustes", y "←" frente a "Volver"): las pruebas tienen que acotar el selector (por ejemplo
   `.nav button`), y si dos botones hacen cosas distintas, se les pone nombre distinto.
+- **Un reemplazo de texto que no encuentra su ancla FALLA EN SILENCIO.** Es el fallo que mas veces
+  se ha colado: los estilos de la ayuda, los del plan de la semana, los del grafico de grupos y los
+  subtitulos, todos "anadidos con exito" segun el comando, y ninguno llego al archivo. La pantalla de
+  ayuda se dibujo entera con los estilos del navegador (texto subrayado y dificil de leer) y el
+  usuario lo vio en su movil.
+  Solucion: los bloques de CSS nuevos se anaden AL FINAL del archivo (sin ancla) y despues se
+  COMPRUEBA que estan. Ademas hay una prueba automatica (`npm run check:css`) que compara las clases
+  que usa el codigo con las que tienen estilo: si falta alguna, falla.
+- **Comprobar que un cambio se ha aplicado, no que el comando no dio error.** Vale para el CSS, para
+  el codigo y para cualquier edicion.
 - **Los errores no se tiran a la basura.** Si algo falla, se dice QUE ha fallado. El fallo de la
   carpeta de copias estuvo escondido por un mensaje generico.
 

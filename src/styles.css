@@ -1394,3 +1394,188 @@ tr.down td.num {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ------------------------------ ayuda (FAQ) ------------------------------ */
+
+/* La pregunta es un boton entero: se toca en cualquier parte de la fila. */
+.faq {
+  display: flex;
+  flex-direction: column;
+}
+
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+
+.faq-item:last-child {
+  border-bottom: 0;
+}
+
+.faq-pregunta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 2px;
+  background: transparent;
+  border: 0;
+  /* Es un boton, no un enlace: sin subrayado y con el color del texto normal. */
+  text-decoration: none;
+  color: var(--text);
+  font-size: 0.94rem;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.faq-flecha {
+  color: var(--accent);
+  font-size: 0.85rem;
+  flex: 0 0 auto;
+}
+
+/* La respuesta va en gris para distinguirse de la pregunta, que va en blanco y en negrita. */
+.faq-respuesta {
+  padding: 0 2px 14px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.faq-respuesta p {
+  color: var(--text-dim);
+}
+
+.faq-item.abierta .faq-pregunta {
+  color: var(--accent);
+}
+
+/* Subtitulo dentro de una tarjeta: separa los pasos de un mismo apartado. */
+.sub-title {
+  margin: 18px 0 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Cada aviso de la portada lleva su propia clase, para poder distinguirlos. */
+.reminder-copia .reminder-titulo,
+.reminder-medidas .reminder-titulo {
+  font-weight: 700;
+}
+
+/* --------------------- accesos de la portada ---------------------------- */
+
+/*
+ * Filas de acceso (copia, progreso, ayuda) al final de la pantalla de Inicio.
+ *
+ * Antes eran botones con texto blanco y SIN FONDO: en el movil se leian como textos sueltos y no
+ * como botones. Cada fila lleva su icono, su titulo, un detalle y una flecha: asi se ve que se toca.
+ */
+.accesos {
+  padding: 4px 14px;
+}
+
+.acceso {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 0;
+  background: transparent;
+  border: 0;
+  /* Sin subrayado ni color de enlace: esto es un boton, no un texto. */
+  text-decoration: none;
+  text-align: left;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.acceso:last-child {
+  border-bottom: 0;
+}
+
+.acceso:active {
+  background: var(--bg-elev-2);
+}
+
+.acceso-icono {
+  flex: 0 0 auto;
+  font-size: 1.15rem;
+  width: 26px;
+  text-align: center;
+}
+
+.acceso-titulo {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.acceso-detalle {
+  display: block;
+  font-size: 0.74rem;
+  color: var(--text-dim);
+  margin-top: 1px;
+}
+
+.acceso-flecha {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* --------------------------- plan de la semana --------------------------- */
+
+/*
+ * Resumen de la semana en la pantalla de Rutinas: una fila por dia, con lo que toca.
+ *
+ * Se anade al final del archivo a proposito, sin depender de ningun texto ancla: antes se insertaba
+ * buscando un comentario que ya no existia, el reemplazo no hacia nada y el cambio se daba por hecho
+ * (asi se quedaron sin estilo el plan de la semana y la pantalla de ayuda).
+ */
+.plan-semana {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.plan-dia {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.86rem;
+}
+
+.plan-dia:last-child {
+  border-bottom: 0;
+}
+
+.plan-nombre {
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+
+.plan-rutinas {
+  color: var(--text);
+}
+
+/* Un dia sin nada se ve apagado: es un hueco, y de un vistazo se nota. */
+.plan-dia.vacio .plan-rutinas {
+  color: var(--text-dim);
+}
+
+/* Tarjetas de rutina, para poder distinguirlas del resumen de la semana. */
+.routine-card {
+  border-color: var(--border);
+}
