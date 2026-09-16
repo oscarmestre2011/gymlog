@@ -8,11 +8,13 @@
 import { describe, expect, it } from 'vitest'
 import type { CardioEntry, CardioSegmento } from '../types'
 import {
+  UNIDADES,
   contarSeries,
+  metrosAKm,
+  plantillaBase,
+  serieExtra,
   minutosPorIntensidad,
   nivelIntensidad,
-  plantillaDeFartlek,
-  plantillaDeSeries,
   resumenDeSeries,
   textoIntensidad,
   textoTipo,
@@ -194,48 +196,96 @@ describe('intensidades', () => {
   })
 })
 
-describe('plantillas', () => {
-  it('la de series hace calentamiento, series con recuperación y vuelta a la calma', () => {
-    const tramos = plantillaDeSeries(6, 3, 2, 10, 5, ids())
-    // 1 calentamiento + 6 x (serie + recuperación) + 1 vuelta
-    expect(tramos).toHaveLength(1 + 12 + 1)
-    expect(tramos[0].intensidad).toBe('suave')
-    expect(tramos[0].notes).toBe('Calentamiento')
-    expect(tramos[tramos.length - 1].notes).toBe('Vuelta a la calma')
-    expect(tramos.filter((t) => t.intensidad === 'fuerte')).toHaveLength(6)
-    expect(tramos.filter((t) => t.intensidad === 'recuperacion')).toHaveLength(6)
-  })
-
-  it('la plantilla de series se puede ajustar', () => {
-    const tramos = plantillaDeSeries(4, 5, 0, 0, 0, ids())
-    // Sin calentamiento, sin recuperación y sin vuelta: solo las 4 series.
+describe('plantilla base: cuatro tramos', () => {
+  /*
+   * A proposito son CUATRO: calentamiento, primer tramo fuerte, su recuperacion y vuelta a la
+   * calma. Antes se proponian 14 (seis series) y el deportista tenia que borrar la mitad antes de
+   * empezar, porque casi nunca hace exactamente esa estructura.
+   */
+  it('la de series tiene calentamiento, una serie, su recuperación y vuelta a la calma', () => {
+    const tramos = plantillaBase('series', ids())
     expect(tramos).toHaveLength(4)
-    expect(tramos.every((t) => t.intensidad === 'fuerte')).toBe(true)
-    expect(tramos.every((t) => t.durationMin === 5)).toBe(true)
+    expect(tramos.map((t) => t.intensidad)).toEqual(['suave', 'fuerte', 'recuperacion', 'suave'])
+    expect(tramos[0].notes).toBe('Calentamiento')
+    expect(tramos[1].notes).toBe('Serie 1')
+    expect(tramos[2].notes).toBe('Recuperación')
+    expect(tramos[3].notes).toBe('Vuelta a la calma')
   })
 
-  it('la de fartlek alterna ritmos y no repite la misma estructura', () => {
-    const tramos = plantillaDeFartlek(ids())
-    expect(tramos.length).toBeGreaterThan(5)
-    expect(tramos[0].intensidad).toBe('suave')
-    // Tiene al menos un tramo fuerte y uno de recuperacion: eso es un fartlek.
-    expect(tramos.some((t) => t.intensidad === 'fuerte')).toBe(true)
-    expect(tramos.some((t) => t.intensidad === 'recuperacion')).toBe(true)
-    // Y los tiempos no son todos iguales (no es una serie estructurada).
-    const tiempos = new Set(tramos.map((t) => t.durationMin))
-    expect(tiempos.size).toBeGreaterThan(2)
+  it('la de fartlek tiene la misma estructura, con sus nombres', () => {
+    const tramos = plantillaBase('fartlek', ids())
+    expect(tramos).toHaveLength(4)
+    expect(tramos[1].notes).toBe('Tramo fuerte')
+    expect(tramos[2].notes).toBe('Tramo suave')
   })
 
-  it('los tramos de las plantillas tienen identificadores distintos', () => {
-    const tramos = plantillaDeSeries(6, 3, 2, 10, 5, ids())
-    expect(new Set(tramos.map((t) => t.id)).size).toBe(tramos.length)
+  it('los tiempos se pueden cambiar al crearla', () => {
+    const tramos = plantillaBase('series', ids(), 15, 8)
+    expect(tramos[0].durationMin).toBe(15)
+    expect(tramos[3].durationMin).toBe(8)
   })
 
-  it('los totales de una plantilla son razonables', () => {
-    const tramos = plantillaDeSeries(6, 3, 2, 10, 5, ids())
-    const totales = totalesDeSegmentos(tramos)
-    // 10 + 6 x (3 + 2) + 5 = 45 minutos
-    expect(totales.minutos).toBe(45)
+  it('todos los tramos tienen identificador distinto', () => {
+    const tramos = plantillaBase('series', ids())
+    expect(new Set(tramos.map((t) => t.id)).size).toBe(4)
+  })
+
+  it('los totales de la plantilla son razonables', () => {
+    // 10 de calentamiento + 3 fuerte + 2 recuperacion + 5 de vuelta = 20 minutos
+    expect(totalesDeSegmentos(plantillaBase('series', ids())).minutos).toBe(20)
+  })
+})
+
+describe('añadir una serie más', () => {
+  it('añade la serie y su recuperación ANTES de la vuelta a la calma', () => {
+    /*
+     * El orden importa: si la serie se añadiera despues de la vuelta a la calma, el entrenamiento
+     * acabaria con una serie fuerte, que no tiene sentido.
+     */
+    const base = plantillaBase('series', ids())
+    const conDos = serieExtra(base, ids())
+    expect(conDos.map((t) => t.intensidad)).toEqual(['suave', 'fuerte', 'recuperacion', 'fuerte', 'recuperacion', 'suave'])
+    expect(conDos[conDos.length - 1].notes).toBe('Vuelta a la calma')
+    expect(conDos).toHaveLength(6)
+  })
+
+  it('se pueden añadir varias seguidas', () => {
+    let tramos = plantillaBase('series', ids())
+    tramos = serieExtra(tramos, ids())
+    tramos = serieExtra(tramos, ids())
+    expect(tramos.filter((t) => t.intensidad === 'fuerte')).toHaveLength(3)
+    expect(tramos[tramos.length - 1].notes).toBe('Vuelta a la calma')
+  })
+
+  it('sin vuelta a la calma, se añade al final', () => {
+    const sinVuelta = [{ id: 'a', intensidad: 'fuerte' as const, durationMin: 3 }]
+    const conExtra = serieExtra(sinVuelta, ids(), 4, 1)
+    expect(conExtra.map((t) => t.intensidad)).toEqual(['fuerte', 'fuerte', 'recuperacion'])
+  })
+
+  it('se puede añadir una serie sin recuperación', () => {
+    const conExtra = serieExtra(plantillaBase('series', ids()), ids(), 5, 0)
+    expect(conExtra.filter((t) => t.intensidad === 'fuerte')).toHaveLength(2)
+    expect(conExtra).toHaveLength(5)
+  })
+})
+
+describe('unidades de los tramos', () => {
+  it('hay tres formas de apuntarlos', () => {
+    expect(UNIDADES.map((u) => u.valor)).toEqual(['tiempo', 'metros', 'km'])
+  })
+
+  it('los metros se guardan como kilómetros', () => {
+    // En la base de datos la distancia siempre va en kilometros, para que los totales sumen bien.
+    expect(metrosAKm(400)).toBe(0.4)
+    expect(metrosAKm(1000)).toBe(1)
+    expect(metrosAKm(1250)).toBe(1.25)
+    expect(metrosAKm(undefined)).toBeUndefined()
+  })
+
+  it('la conversión no acumula decimales raros', () => {
+    expect(metrosAKm(333)).toBe(0.33)
+    expect(metrosAKm(1234)).toBe(1.23)
   })
 })
 

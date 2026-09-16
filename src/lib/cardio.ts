@@ -133,60 +133,65 @@ export function tramoNuevo(intensidad: IntensidadCardio = 'fuerte', id: string):
   return { id, intensidad }
 }
 
-/**
- * Plantilla de series: calentamiento, N series fuertes con su recuperacion, y vuelta a la calma.
- *
- * Se ofrece como punto de partida para no tener que apuntar seis tramos a mano: los tiempos son
- * orientativos y se cambian. Es la estructura clasica de un entrenamiento de series.
- */
-export function plantillaDeSeries(
-  cuantas: number,
-  minutosSerie = 3,
-  minutosRecuperacion = 2,
-  minutosCalentamiento = 10,
-  minutosVuelta = 5,
-  generarId: () => string,
-): CardioSegmento[] {
-  const tramos: CardioSegmento[] = []
-  if (minutosCalentamiento > 0) {
-    tramos.push({ id: generarId(), intensidad: 'suave', durationMin: minutosCalentamiento, notes: 'Calentamiento' })
-  }
-  for (let i = 0; i < cuantas; i += 1) {
-    tramos.push({ id: generarId(), intensidad: 'fuerte', durationMin: minutosSerie })
-    if (minutosRecuperacion > 0) {
-      tramos.push({ id: generarId(), intensidad: 'recuperacion', durationMin: minutosRecuperacion })
-    }
-  }
-  if (minutosVuelta > 0) {
-    tramos.push({ id: generarId(), intensidad: 'suave', durationMin: minutosVuelta, notes: 'Vuelta a la calma' })
-  }
-  return tramos
+/** Unidad con la que se apuntan los tramos: por tiempo, por metros o por kilometros. */
+export type UnidadTramo = 'tiempo' | 'metros' | 'km'
+
+export const UNIDADES: { valor: UnidadTramo; texto: string; ayuda: string }[] = [
+  { valor: 'tiempo', texto: 'Por tiempo', ayuda: 'Series de minutos: 3 min fuerte, 2 min suave…' },
+  { valor: 'metros', texto: 'Por metros', ayuda: 'Series cortas de pista: 400 m, 200 m, 100 m…' },
+  { valor: 'km', texto: 'Por km', ayuda: 'Series largas: 1 km, 2 km…' },
+]
+
+/** Metros a kilometros, para poder guardar siempre la distancia en km. */
+export function metrosAKm(metros: number | undefined): number | undefined {
+  if (metros === undefined || metros === null) return undefined
+  return Math.round((metros / 1000) * 100) / 100
 }
 
 /**
- * Plantilla de fartlek: cambios de ritmo sin estructura fija.
+ * Plantilla BASE de un entrenamiento por tramos: CUATRO tramos.
  *
- * Se reparten tramos alternando fuerte y suave, con tiempos variados, que es lo que caracteriza al
- * fartlek: no hay series iguales.
+ * A proposito son solo cuatro: calentamiento, el primer tramo fuerte, su recuperacion y la vuelta a
+ * la calma. Antes se proponian 14 tramos (seis series con sus recuperaciones) y eso es demasiado:
+ * el deportista casi nunca hace exactamente esa estructura, asi que tenia que borrar la mitad antes
+ * de empezar. Con cuatro se ve la idea y el que quiera mas series las anade con "+ Serie".
  */
-export function plantillaDeFartlek(generarId: () => string, total = 10): CardioSegmento[] {
-  const tramos: CardioSegmento[] = [
-    { id: generarId(), intensidad: 'suave', durationMin: 8, notes: 'Calentamiento' },
+export function plantillaBase(
+  tipo: 'series' | 'fartlek',
+  generarId: () => string,
+  minutosCalentamiento = 10,
+  minutosVuelta = 5,
+): CardioSegmento[] {
+  const fuerte = tipo === 'series' ? 'Serie 1' : 'Tramo fuerte'
+  const suave = tipo === 'series' ? 'Recuperación' : 'Tramo suave'
+  return [
+    { id: generarId(), intensidad: 'suave', durationMin: minutosCalentamiento, notes: 'Calentamiento' },
+    { id: generarId(), intensidad: 'fuerte', durationMin: 3, notes: fuerte },
+    { id: generarId(), intensidad: 'recuperacion', durationMin: 2, notes: suave },
+    { id: generarId(), intensidad: 'suave', durationMin: minutosVuelta, notes: 'Vuelta a la calma' },
   ]
-  const cambios = [
-    { intensidad: 'fuerte' as const, durationMin: 2 },
-    { intensidad: 'suave' as const, durationMin: 3 },
-    { intensidad: 'maximo' as const, durationMin: 1 },
-    { intensidad: 'recuperacion' as const, durationMin: 2 },
-    { intensidad: 'fuerte' as const, durationMin: 3 },
-    { intensidad: 'medio' as const, durationMin: 4 },
-    { intensidad: 'fuerte' as const, durationMin: 2 },
-    { intensidad: 'recuperacion' as const, durationMin: 3 },
-    { intensidad: 'medio' as const, durationMin: 5 },
+}
+
+/**
+ * Una serie mas con su recuperacion, para el atajo "+ Serie".
+ * Se anade justo ANTES de la vuelta a la calma, que es donde toca.
+ */
+export function serieExtra(
+  segmentos: CardioSegmento[],
+  generarId: () => string,
+  minutosSerie = 3,
+  minutosRecuperacion = 2,
+): CardioSegmento[] {
+  const nuevas: CardioSegmento[] = [
+    { id: generarId(), intensidad: 'fuerte', durationMin: minutosSerie },
   ]
-  for (let i = 0; i < Math.min(total, cambios.length); i += 1) {
-    tramos.push({ id: generarId(), ...cambios[i] })
+  if (minutosRecuperacion > 0) {
+    nuevas.push({ id: generarId(), intensidad: 'recuperacion', durationMin: minutosRecuperacion })
   }
-  tramos.push({ id: generarId(), intensidad: 'suave', durationMin: 5, notes: 'Vuelta a la calma' })
-  return tramos
+  // Si el ultimo tramo es la vuelta a la calma, las series van antes.
+  const ultimo = segmentos[segmentos.length - 1]
+  if (ultimo && /vuelta a la calma/i.test(ultimo.notes ?? '')) {
+    return [...segmentos.slice(0, -1), ...nuevas, ultimo]
+  }
+  return [...segmentos, ...nuevas]
 }

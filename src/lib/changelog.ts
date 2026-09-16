@@ -37,6 +37,17 @@ export interface VersionApp {
  */
 export const VERSIONES: VersionApp[] = [
   {
+    version: '1.8.0',
+    fecha: '2026-09-16',
+    titulo: 'Series en metros o por tiempo, y plantilla de cuatro tramos',
+    cambios: [
+      { tipo: 'mejora', texto: 'Los tramos se pueden apuntar por tiempo, por METROS (400 m, 200 m: lo de pista) o por kilómetros. Antes solo en minutos.' },
+      { tipo: 'mejora', texto: 'La plantilla de un entrenamiento por series ahora son CUATRO tramos: calentamiento, serie, recuperación y vuelta a la calma. Antes proponía 14 y había que borrar la mitad antes de empezar.' },
+      { tipo: 'mejora', texto: 'El atajo «⚡ + Serie» añade una serie más con su recuperación, en su sitio (antes de la vuelta a la calma).' },
+      { tipo: 'mejora', texto: 'Cada tramo indica qué es cada casilla (minutos y km, o metros y minutos), y el total se muestra en la unidad elegida.' },
+    ],
+  },
+  {
     version: '1.7.0',
     fecha: '2026-09-16',
     titulo: 'Cardio por series y fartlek',

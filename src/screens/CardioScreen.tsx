@@ -5,12 +5,15 @@ import {
   TIPOS_CARDIO,
   contarSeries,
   nivelIntensidad,
-  plantillaDeFartlek,
-  plantillaDeSeries,
+  UNIDADES,
+  metrosAKm,
+  plantillaBase,
+  serieExtra,
   resumenDeSeries,
   tipoDe,
   totalesDe,
   tramoNuevo,
+  type UnidadTramo,
 } from '../lib/cardio'
 import { newId } from '../db'
 import { deleteCardio, listCardio, listSessionsByDate, saveCardio } from '../db/repository'
@@ -262,6 +265,13 @@ function CardioEditor({
     return h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`
   })
   const [durationError, setDurationError] = useState<string | null>(null)
+  /**
+   * Con que se apuntan los tramos: tiempo, metros o km.
+   *
+   * Pista y series cortas se apuntan en METROS (400 m, 200 m) y las series largas en km. Antes solo
+   * se podia en minutos, que no sirve para un 6x400.
+   */
+  const [unidad, setUnidad] = useState<UnidadTramo>(entry.unidadTramos ?? 'tiempo')
 
   const { data: sessionsToday } = useQuery(() => listSessionsByDate(draft.date), [draft.date], [])
 
@@ -303,7 +313,12 @@ function CardioEditor({
                * los tramos (se detecto con una prueba: 47 minutos en los tramos y 60 guardados).
                */
               const finalEntry: CardioEntry = esPorTramos
-                ? { ...draft, durationMin: totalesTramos.minutos, distanceKm: totalesTramos.km || undefined }
+                ? {
+                    ...draft,
+                    durationMin: totalesTramos.minutos,
+                    distanceKm: totalesTramos.km || undefined,
+                    unidadTramos: unidad,
+                  }
                 : { ...draft, durationMin: parsed && parsed > 0 ? parsed / 60 : draft.durationMin }
               void onSave(finalEntry)
             }}
@@ -332,14 +347,9 @@ function CardioEditor({
                   }
                   // Al pasar a series o fartlek se propone una plantilla, para no empezar de cero.
                   if ((d.segmentos?.length ?? 0) > 0) return { ...d, tipo }
-                  return {
-                    ...d,
-                    tipo,
-                    segmentos:
-                      tipo === 'series'
-                        ? plantillaDeSeries(6, 3, 2, 10, 5, () => newId('cs_'))
-                        : plantillaDeFartlek(() => newId('cs_')),
-                  }
+                  // Plantilla BASE de cuatro tramos: calentamiento, primer tramo fuerte, su
+                  // recuperacion y vuelta a la calma. El que quiera mas series las anade.
+                  return { ...d, tipo, segmentos: plantillaBase(tipo, () => newId('cs_')) }
                 })
               }
             >
@@ -369,6 +379,36 @@ function CardioEditor({
 
       {esPorTramos ? (
         <div style={{ marginTop: 12 }}>
+          {/* Como se apuntan los tramos: por tiempo, por metros o por km. */}
+          <div className="field" style={{ marginBottom: 10 }}>
+            <label>Los tramos, ¿cómo los apuntas?</label>
+            <div className="row wrap" style={{ gap: 6 }}>
+              {UNIDADES.map((opcion) => (
+                <button
+                  key={opcion.valor}
+                  className={`chip${unidad === opcion.valor ? ' active' : ''}`}
+                  onClick={() => setUnidad(opcion.valor)}
+                >
+                  {opcion.texto}
+                </button>
+              ))}
+            </div>
+            <p className="tiny muted" style={{ margin: '6px 0 0' }}>
+              {UNIDADES.find((u) => u.valor === unidad)?.ayuda}
+            </p>
+          </div>
+
+          {/* Cabecera: sin ella, las dos casillas de cada tramo no dicen qué son. */}
+          <div className="row between" style={{ marginBottom: 4 }}>
+            <span className="tramo-cabecera">Tramo</span>
+            <span className="tramo-cabecera">
+              {unidad === 'tiempo' ? 'Minutos' : unidad === 'metros' ? 'Metros' : 'Km'}
+            </span>
+            <span className="tramo-cabecera">
+              {unidad === 'tiempo' ? 'Km (opcional)' : 'Minutos (opcional)'}
+            </span>
+          </div>
+
           <div className="row between" style={{ marginBottom: 8 }}>
             <label style={{ margin: 0 }}>Tramos ({draft.segmentos?.length ?? 0})</label>
             <div className="row" style={{ gap: 6 }}>
@@ -388,15 +428,12 @@ function CardioEditor({
                 onClick={() =>
                   setDraft((d) => ({
                     ...d,
-                    segmentos: [
-                      ...(d.segmentos ?? []),
-                      ...plantillaDeSeries(4, 3, 2, 0, 0, () => newId('cs_')),
-                    ],
+                    segmentos: serieExtra(d.segmentos ?? [], () => newId('cs_')),
                   }))
                 }
-                title="Añade 4 series con sus recuperaciones"
+                title="Añade una serie más con su recuperación, antes de la vuelta a la calma"
               >
-                ⚡ +4 series
+                ⚡ + Serie
               </button>
             </div>
           </div>
@@ -408,31 +445,67 @@ function CardioEditor({
                 <div className="tramo-campos">
                   <div className="tramo-fila">
                     <span className="tramo-numero">{indice + 1}</span>
+                    {/*
+                      Con "por tiempo" se apuntan minutos; con metros o km, la distancia. La
+                      distancia SIEMPRE se guarda en kilometros (los metros se convierten), para que
+                      los totales sumen bien.
+                    */}
+                    {unidad === 'tiempo' ? (
+                      <NumberInput
+                        value={tramo.durationMin}
+                        onChange={(v) =>
+                          setDraft((d) => ({
+                            ...d,
+                            segmentos: (d.segmentos ?? []).map((x) =>
+                              x.id === tramo.id ? { ...x, durationMin: v } : x,
+                            ),
+                          }))
+                        }
+                        placeholder="min"
+                        ariaLabel={`Minutos del tramo ${indice + 1}`}
+                      />
+                    ) : (
+                      <NumberInput
+                        value={unidad === 'metros' ? (tramo.distanceKm ? Math.round(tramo.distanceKm * 1000) : undefined) : tramo.distanceKm}
+                        onChange={(v) =>
+                          setDraft((d) => ({
+                            ...d,
+                            segmentos: (d.segmentos ?? []).map((x) =>
+                              x.id === tramo.id
+                                ? { ...x, distanceKm: unidad === 'metros' ? metrosAKm(v) : v }
+                                : x,
+                            ),
+                          }))
+                        }
+                        placeholder={unidad === 'metros' ? 'metros' : 'km'}
+                        integer={unidad === 'metros'}
+                        ariaLabel={
+                          unidad === 'metros'
+                            ? `Metros del tramo ${indice + 1}`
+                            : `Kilómetros del tramo ${indice + 1}`
+                        }
+                      />
+                    )}
                     <NumberInput
-                      value={tramo.durationMin}
+                      value={unidad === 'tiempo' ? tramo.distanceKm : tramo.durationMin}
                       onChange={(v) =>
                         setDraft((d) => ({
                           ...d,
                           segmentos: (d.segmentos ?? []).map((x) =>
-                            x.id === tramo.id ? { ...x, durationMin: v } : x,
+                            x.id === tramo.id
+                              ? unidad === 'tiempo'
+                                ? { ...x, distanceKm: v }
+                                : { ...x, durationMin: v }
+                              : x,
                           ),
                         }))
                       }
-                      placeholder="min"
-                      ariaLabel={`Minutos del tramo ${indice + 1}`}
-                    />
-                    <NumberInput
-                      value={tramo.distanceKm}
-                      onChange={(v) =>
-                        setDraft((d) => ({
-                          ...d,
-                          segmentos: (d.segmentos ?? []).map((x) =>
-                            x.id === tramo.id ? { ...x, distanceKm: v } : x,
-                          ),
-                        }))
+                      placeholder={unidad === 'tiempo' ? 'km' : 'min'}
+                      ariaLabel={
+                        unidad === 'tiempo'
+                          ? `Kilómetros del tramo ${indice + 1}`
+                          : `Minutos del tramo ${indice + 1}`
                       }
-                      placeholder="km"
-                      ariaLabel={`Kilómetros del tramo ${indice + 1}`}
                     />
                     <button
                       className="icon-btn danger"
@@ -474,7 +547,11 @@ function CardioEditor({
             <div className="notice info" style={{ marginTop: 10 }}>
               <div>
                 Total: <b>{formatDuration(Math.round(totalesTramos.minutos * 60))}</b>
-                {totalesTramos.km > 0 ? ` · ${formatNumber(totalesTramos.km)} km` : ''}
+                {totalesTramos.km > 0
+                  ? unidad === 'metros'
+                    ? ` · ${formatNumber(Math.round(totalesTramos.km * 1000))} m`
+                    : ` · ${formatNumber(totalesTramos.km)} km`
+                  : ''}
               </div>
               {seriesContadas > 0 ? <div>{seriesContadas} series fuertes</div> : null}
             </div>

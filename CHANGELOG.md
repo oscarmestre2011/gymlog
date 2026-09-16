@@ -3,6 +3,15 @@
 > Generado desde `src/lib/changelog.ts` con `npm run changelog`.
 > No editar a mano: los cambios se hacen en ese archivo.
 
+## 1.8.0 — Series en metros o por tiempo, y plantilla de cuatro tramos
+
+_2026-09-16_
+
+- **Mejorado:** Los tramos se pueden apuntar por tiempo, por METROS (400 m, 200 m: lo de pista) o por kilómetros. Antes solo en minutos.
+- **Mejorado:** La plantilla de un entrenamiento por series ahora son CUATRO tramos: calentamiento, serie, recuperación y vuelta a la calma. Antes proponía 14 y había que borrar la mitad antes de empezar.
+- **Mejorado:** El atajo «⚡ + Serie» añade una serie más con su recuperación, en su sitio (antes de la vuelta a la calma).
+- **Mejorado:** Cada tramo indica qué es cada casilla (minutos y km, o metros y minutos), y el total se muestra en la unidad elegida.
+
 ## 1.7.0 — Cardio por series y fartlek
 
 _2026-09-16_

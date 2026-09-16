@@ -205,6 +205,13 @@ export interface CardioEntry {
   tipo?: 'continuo' | 'series' | 'fartlek'
   /** Los tramos, cuando es por series o fartlek. */
   segmentos?: CardioSegmento[]
+  /**
+   * Con que se apuntaron los tramos: por tiempo, por metros o por km.
+   *
+   * Se guarda para que al volver a abrir el entrenamiento se vea como se apunto (un 6x400 se
+   * apunta en metros, y volver a verlo en minutos obligaria a convertirlo de cabeza).
+   */
+  unidadTramos?: 'tiempo' | 'metros' | 'km'
   /** Metros de desnivel positivo. */
   elevationM?: number
   avgHr?: number

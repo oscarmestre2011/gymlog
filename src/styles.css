@@ -1093,6 +1093,24 @@ tr.down td.num {
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Cabecera de columnas de la lista de tramos. Se alinea con la rejilla de .tramo-fila (numero,
+ * primer campo, segundo campo) para que se entienda que es cada casilla.
+ */
+.tramo-cabecera {
+  flex: 1;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.tramo-cabecera:first-child {
+  flex: 0 0 20px;
+  text-align: left;
+}
+
 /* Chips pequenos para las intensidades, que son cinco y tienen que caber. */
 .chip.sm {
   padding: 3px 8px;
