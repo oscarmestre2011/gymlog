@@ -272,6 +272,46 @@ try {
     'El pie tambien tiene el enlace de apoyo',
   )
 
+  /*
+   * Los botones de donacion van junto a los de descarga (portada, instalacion, datos y cierre).
+   * Se comprueba que esten TODOS: si alguien añade un boton de descarga nuevo y se olvida del
+   * hueco de apoyo, esto lo dice.
+   */
+  const huecos = await pagina.locator('.apoyo-linea').count()
+  comprobar(huecos === 4, 'Hay 4 huecos de apoyo, uno junto a cada boton de descarga', `${huecos}`)
+  const huecosVisibles = await pagina
+    .locator('.apoyo-linea')
+    .evaluateAll((nodos) => nodos.filter((n) => !n.hidden && n.innerText.trim().length > 0).length)
+  comprobar(huecosVisibles === 4, 'Los 4 estan rellenos, ninguno vacio', `${huecosVisibles}/4`)
+
+  const todosLosBotonesApoyo = await pagina
+    .locator('.apoyo-linea a')
+    .evaluateAll((nodos) => nodos.map((n) => n.getAttribute('href')))
+  comprobar(
+    todosLosBotonesApoyo.length === 16 && todosLosBotonesApoyo.every((h) => /paypal\.me/.test(h ?? '')),
+    'En los 4 huecos hay los mismos 4 botones de PayPal',
+    `${todosLosBotonesApoyo.length} botones`,
+  )
+  comprobar(
+    (await pagina.locator('.apoyo-linea a[href$="5EUR"]').count()) === 4 &&
+      (await pagina.locator('.apoyo-linea a[href$="10EUR"]').count()) === 4 &&
+      (await pagina.locator('.apoyo-linea a[href$="20EUR"]').count()) === 4,
+    'Cada hueco lleva las tres cantidades (5, 10 y 20)',
+  )
+
+  /*
+   * La direccion de la app ya no se enseña suelta: solo se llega a ella por un boton. Se comprueba
+   * que ningun texto de la pagina muestre la direccion (el href si puede llevarla, claro).
+   */
+  const textoDeLaPagina = await pagina.locator('body').innerText()
+  comprobar(
+    !/oscarmestre2011\.github\.io/i.test(textoDeLaPagina),
+    'La direccion de la app no aparece escrita en la pagina',
+    (textoDeLaPagina.match(/oscarmestre2011[^\s]*/) ?? [''])[0],
+  )
+  const botonesDescarga = await pagina.getByRole('link', { name: /Descargar la app/i }).count()
+  comprobar(botonesDescarga >= 3, 'Hay botones de "Descargar la app" donde toca', `${botonesDescarga}`)
+
   // El aviso de instalar solo aparece cuando el navegador lo ofrece.
   const botonInstalar = pagina.locator('#boton-instalar')
   comprobar(await botonInstalar.isHidden(), 'El boton de instalar empieza oculto si no hay aviso nativo')
@@ -387,10 +427,24 @@ try {
   })
   const pIPhone = await iphone.newPage()
   await pIPhone.goto(base, { waitUntil: 'networkidle' })
-  const marcaRecomendado = await pIPhone
-    .locator('.solo-ios')
-    .evaluate((el) => getComputedStyle(el).display)
-  comprobar(marcaRecomendado !== 'none', 'En iPhone se marca sola la pestana de iPhone', marcaRecomendado)
+  // Ya no se marca "tu movil" en la pestaña (se quito a proposito): lo que importa es que las dos
+  // pestañas lleven a sus instrucciones y que el iPhone no se quede sin saber que hacer.
+  comprobar(
+    (await pIPhone.locator('.pestanas-botones label').count()) === 2,
+    'En iPhone estan las dos pestañas (Android e iPhone)',
+  )
+  comprobar(
+    (await pIPhone.locator('label[for="p-ios"]').innerText()).trim() === 'iPhone',
+    'La pestaña se llama simplemente "iPhone", sin la etiqueta de "tu movil"',
+  )
+  // Ojo: hay que mirar SOLO las pestañas. La frase "Tus datos se quedan en tu móvil" es texto
+  // normal de la pagina y buscarla en toda la pagina daba un falso fallo.
+  const etiquetas = (await pIPhone.locator('.pestanas-botones label').allInnerTexts()).join(' ')
+  comprobar(
+    !/tu móvil/i.test(etiquetas),
+    'Ninguna pestaña lleva la etiqueta "tu móvil"',
+    etiquetas.trim(),
+  )
   comprobar(
     await pIPhone.locator('#boton-instalar').isHidden(),
     'En iPhone (Safari) no se ofrece el boton nativo de instalar',
