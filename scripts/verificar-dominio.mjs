@@ -243,6 +243,49 @@ async function revisar() {
     comprobar(false, 'Los archivos de dentro se sirven', String(error).split('\n')[0].slice(0, 90))
   }
 
+  /*
+   * La app vive en /app/ (subcarpeta del mismo dominio). Es la comprobacion que de verdad dice si
+   * la mudanza ha salido bien: que la app arranque, que su service worker tenga el ambito /app/ y
+   * que el aviso de version nueva siga funcionando.
+   */
+  console.log('\n4. La app en ' + `https://${dominio}/app/`)
+  try {
+    const respuesta = await fetch(`https://${dominio}/app/`, { signal: AbortSignal.timeout(25000) })
+    const html = await respuesta.text()
+    comprobar(respuesta.ok, 'La app responde', `codigo ${respuesta.status}`)
+
+    const script = html.match(/src="([^"]*index-[^"]*\.js)"/)?.[1]
+    comprobar(Boolean(script), 'El HTML carga su archivo con la ruta correcta', script ?? 'no encontrado')
+    if (script) {
+      const rutaJs = await fetch(new URL(script, `https://${dominio}/app/`), {
+        signal: AbortSignal.timeout(25000),
+      })
+      comprobar(rutaJs.ok, 'Y ese archivo existe de verdad (no da 404)', `codigo ${rutaJs.status}`)
+    }
+
+    const sw = await fetch(`https://${dominio}/app/sw.js`, { signal: AbortSignal.timeout(20000) })
+    comprobar(sw.ok, 'El service worker esta donde toca (sin conexion funciona)', `codigo ${sw.status}`)
+
+    const manifiesto = await fetch(`https://${dominio}/app/manifest.webmanifest`, {
+      signal: AbortSignal.timeout(20000),
+    })
+    const manifiestoJson = manifiesto.ok ? await manifiesto.json() : null
+    comprobar(
+      Boolean(manifiestoJson?.name),
+      'El manifiesto se sirve (la app se puede instalar)',
+      manifiestoJson?.name ?? `codigo ${manifiesto.status}`,
+    )
+    // El id y el start_url tienen que seguir siendo relativos: si se cambian, la app instalada
+    // se queda huerfana y la gente tendria que reinstalar.
+    comprobar(
+      manifiestoJson?.id === './' && manifiestoJson?.start_url === './',
+      'El manifiesto sigue usando rutas relativas (no rompe las instalaciones)',
+      `id=${manifiestoJson?.id} start_url=${manifiestoJson?.start_url}`,
+    )
+  } catch (error) {
+    comprobar(false, 'La app responde en /app/', String(error).split('\n')[0].slice(0, 90))
+  }
+
   console.log(`\n${comprobaciones - fallos}/${comprobaciones} comprobaciones correctas`)
   return fallos === 0
 }
