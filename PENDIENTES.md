@@ -76,6 +76,19 @@ Ultima revision: 16 de septiembre de 2026, con la version **1.1.0** publicada.
 - **Los enlaces que se reescriben con JavaScript pueden pisarse entre ellos.** En la web, una
   funcion que ponia el enlace de donacion del pie reescribia TAMBIEN los botones de cantidad, y los
   cuatro acabaron sin importe. Lo cazo una comprobacion que mira que cada enlace lleve su cantidad.
+- **La carpeta donde se compila una app NO es decorativa: los archivos la llevan dentro.** Al mudar
+  la app al dominio propio se cambio `GYMLOG_BASE` de `/gymlog/` a `/app/` creyendo que era solo una
+  ruta. El HTML publicado paso a pedir `/app/assets/index-x.js` mientras GitHub seguia sirviendo
+  `/gymlog/`: **la app publicada se quedo en blanco** y no se noto hasta comprobar la direccion real.
+  Regla: si se toca la carpeta de compilacion, hay que comprobar la direccion PUBLICADA (que el
+  archivo que pide el HTML exista de verdad), no solo que el despliegue diga "success".
+- **Un despliegue puede publicar un artefacto viejo si se lanzan dos seguidos.** Al publicar la web
+  con la app copiada, GitHub publico el artefacto del despliegue anterior y `/app/` no aparecia
+  (404) aunque los registros demostraban que los archivos SI iban dentro. Se arreglo lanzando el
+  flujo otra vez. Cuando algo "deberia estar" y no esta, antes de tocar codigo: volver a lanzar.
+- **`git checkout -- archivo` NO deshace tu ultimo cambio: lo restaura al ultimo commit** (que es
+  donde ya estaba el cambio malo). Paso al intentar revertir la carpeta de compilacion. Para
+  revertir de verdad hay que editar el archivo, o `git revert`.
 
 ## Pendiente
 
