@@ -51,6 +51,22 @@ Ultima revision: 16 de septiembre de 2026, con la version **1.1.0** publicada.
   el codigo y para cualquier edicion.
 - **Los errores no se tiran a la basura.** Si algo falla, se dice QUE ha fallado. El fallo de la
   carpeta de copias estuvo escondido por un mensaje generico.
+- **Una prueba que da por hecho el dia de la semana se rompe sola.** Paso el jueves 17-09-2026, con
+  dos pruebas a la vez: la de humo exigia un boton "Empezar" en Inicio (que solo existe si hoy toca
+  entrenar, y las rutinas sembradas estan en lunes, miercoles y viernes) y la de planificacion
+  movia UNA rutina para dejar el dia vacio, sin acordarse de que otra ya estaba puesta ese dia.
+  En los dos casos la app hacia lo correcto y el fallo era de la prueba.
+  Solucion: las pruebas de "hoy" tienen que valerse de la fecha real (`new Date().getDay()`) y
+  cubrir los DOS casos (toca / no toca); y para probar "no toca hoy" hay que vaciar la semana
+  ENTERA, no una rutina suelta.
+- **La web de presentacion no puede prometer lo que la app no hace.** La primera version decia
+  "avisa con sonido" sin el limite de iPhone, y hablaba de la copia en carpeta sin decir que es
+  solo de Android. Por eso los textos de la web salen de la app (`npm run web`) y hay una prueba
+  (`src/lib/kairos.test.ts`) que falla si se promete sonido sin avisar del limite en iPhone.
+- **Cuidado con las imagenes de las pruebas visuales.** Al capturar una pagina entera, las capturas
+  con `loading="lazy"` que quedan lejos de la pantalla salen como marcos negros vacios, y con la
+  cabecera fija capturada a mitad de pagina si no se vuelve arriba antes. Las dos cosas parecen
+  fallos de la web y son de la captura.
 
 ## Pendiente
 

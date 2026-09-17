@@ -47,6 +47,34 @@ async function ponerDias(page, nombre, dias) {
   )
 }
 
+/**
+ * Quita los dias de TODAS las rutinas: deja la semana entera vacia.
+ *
+ * Hace falta para poder probar el caso "hoy no toca entrenar". Mover una sola rutina no basta: en
+ * este guion, para cuando se llega ahi, Fuerza A ya esta puesta en el dia de hoy por una
+ * comprobacion anterior, asi que sigue tocando entrenar y la app hace lo correcto. La prueba se
+ * estaba enganyando a si misma (paso el jueves 17-09-2026).
+ */
+async function vaciarSemana(page) {
+  await page.evaluate(async () => {
+    const peticion = indexedDB.open('gymlog')
+    const db = await new Promise((resolve) => {
+      peticion.onsuccess = () => resolve(peticion.result)
+    })
+    const rutinas = db.transaction('routines', 'readwrite').objectStore('routines')
+    const todas = await new Promise((resolve) => {
+      const p = rutinas.getAll()
+      p.onsuccess = () => resolve(p.result ?? [])
+    })
+    for (const rutina of todas) {
+      await new Promise((resolve) => {
+        const p = rutinas.put({ ...rutina, weekdays: [], weekday: 'Cualquier día' })
+        p.onsuccess = () => resolve()
+      })
+    }
+  })
+}
+
 const browser = await chromium.launch()
 try {
   const context = await browser.newContext({ ...devices['Pixel 7'], locale: 'es-ES' })
@@ -123,7 +151,11 @@ try {
 
   /* ---------------- 4. Un día sin nada programado --------------------- */
   console.log('\n--- 4. Un día sin entrenamiento programado ---')
-  await ponerDias(page, 'Fuerza B', [(hoy + 1) % 7])
+  /*
+   * Se vacia la semana ENTERA, no solo una rutina: si queda cualquier otra programada para hoy, la
+   * app debe proponerla (y hace bien), asi que el caso no se estaria probando de verdad.
+   */
+  await vaciarSemana(page)
   await page.locator('.nav button', { hasText: 'Progreso' }).click()
   await page.waitForTimeout(800)
   await page.locator('.nav button', { hasText: 'Inicio' }).click()
@@ -137,12 +169,18 @@ try {
   check('Y ofrece entrenar igualmente', /Elegir rutina y entrenar/i.test(sinNada))
   check(
     'NO propone una rutina cualquiera',
-    !/Fuerza B/i.test(sinNada),
+    !/Fuerza [ABC]/i.test(sinNada),
     sinNada.match(/Fuerza [ABC][^\n]*/)?.[0] ?? 'no propone ninguna (correcto)',
   )
 
   /* ------------- 5. Y se puede empezar la que toque mañana ------------ */
   console.log('\n--- 5. Empezar una rutina que no toca hoy ---')
+  // A Fuerza B se le da manana, para que hoy no toque pero si aparezca como opcion.
+  await ponerDias(page, 'Fuerza B', [(hoy + 1) % 7])
+  await page.locator('.nav button', { hasText: 'Rutinas' }).click()
+  await page.waitForTimeout(600)
+  await page.locator('.nav button', { hasText: 'Inicio' }).click()
+  await page.waitForTimeout(1200)
   await page.getByRole('button', { name: /Elegir rutina y entrenar/i }).click()
   await page.waitForSelector('.modal', { timeout: 12000 })
   await page.locator('.modal .list-item', { hasText: 'Fuerza B' }).first().click()

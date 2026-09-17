@@ -102,7 +102,27 @@ try {
     /Fuerza [ABC]|no toca entrenar|Elegir rutina y entrenar/i.test(portada),
     portada.match(/(Fuerza [ABC][^\n]*|Hoy no toca entrenar)/)?.[0] ?? '',
   )
-  check('Y hay un botón para empezar', await page.getByRole('button', { name: /Empezar/i }).first().isVisible())
+  /*
+   * Cuidado con esto: la prueba se ejecuta CUALQUIER dia de la semana, y las rutinas sembradas
+   * estan en lunes, miercoles y viernes. Un jueves no toca entrenar, asi que en Inicio pone
+   * "Hoy no toca entrenar" y el boton es "Elegir rutina y entrenar", no "Empezar".
+   *
+   * Esto fallo de verdad el jueves 17-09-2026: la comprobacion daba por hecho que siempre hay un
+   * entrenamiento programado. Hay que aceptar los dos casos, segun lo que diga la propia portada.
+   */
+  const tocaEntrenar = /Fuerza [ABC]/.test(portada)
+  const botonEsperado = tocaEntrenar ? /Empezar/i : /Elegir rutina y entrenar/i
+  check(
+    'Y hay un botón para empezar (según toque entrenar hoy o no)',
+    await page.getByRole('button', { name: botonEsperado }).first().isVisible(),
+    tocaEntrenar ? 'hoy toca entrenar: se espera «Empezar»' : 'hoy no toca: se espera «Elegir rutina y entrenar»',
+  )
+  // Y se dice claramente cuando no toca: proponer una rutina equivocada seria peor que no proponer.
+  if (!tocaEntrenar) {
+    check('Si no toca entrenar, la portada lo dice', portada.includes('Hoy no toca entrenar'))
+  } else {
+    check('Si toca entrenar, aparece el nombre de la rutina', /Fuerza [ABC]/.test(portada))
+  }
   await shot('01-inicio')
 
   /* --------------------------- 2. rutinas sembradas ----------------------- */
