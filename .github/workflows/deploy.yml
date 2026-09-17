@@ -1,8 +1,12 @@
 # Publica la app en GitHub Pages cada vez que se sube un cambio a main.
 #
-# Resultado: una direccion HTTPS fija (https://kairosentrena.com/app/) que se actualiza sola. Esa
-# direccion es la que se instala en el movil, y al actualizarse se queda el mismo icono y los
-# mismos datos.
+# Resultado: una direccion HTTPS fija (https://oscarmestre2011.github.io/gymlog/) que se actualiza
+# sola. Esa direccion es la que se instala en el movil, y al actualizarse se queda el mismo icono y
+# los mismos datos.
+#
+# Y ademas, esa misma publicacion se copia en https://kairosentrena.com/app/ (lo hace el flujo del
+# repositorio de la web). Por eso la carpeta de compilacion sigue siendo /gymlog/: la publicacion
+# tiene que funcionar en su propia direccion.
 name: Publicar en GitHub Pages
 
 on:
@@ -43,15 +47,17 @@ jobs:
         run: npm test
 
       - name: Compilar
-        # GYMLOG_BASE deja las rutas de la app preparadas para vivir en /app/, que es la subcarpeta
-        # del dominio propio (https://kairosentrena.com/app/).
+        # La app se publica en oscarmestre2011.github.io/gymlog/, asi que compila con ESA subcarpeta.
         #
-        # Antes la app vivia en oscarmestre2011.github.io/gymlog/ y esto ponia /gymlog/. Se cambio
-        # al mudar el proyecto a kairosentrena.com. OJO: si se cambia esta carpeta hay que cambiar
-        # tambien la misma cadena en las pruebas (scripts/test-*.mjs y verify-pages.mjs).
+        # OJO: esto NO es decorativo. Si se pone otra carpeta, el HTML pide sus archivos a una ruta
+        # que no existe y la app publicada se queda en blanco. Paso de verdad el 17-09-2026 al
+        # intentar dejarla en /app/: las rutas apuntaban a /app/assets/ y GitHub servia /gymlog/.
+        #
+        # La entrega en kairosentrena.com/app la hace el flujo del repositorio de la web, que copia
+        # esta misma publicacion dentro de su carpeta /app.
         run: npm run build
         env:
-          GYMLOG_BASE: /app/
+          GYMLOG_BASE: /gymlog/
 
       - name: Preparar Pages
         uses: actions/configure-pages@v5
