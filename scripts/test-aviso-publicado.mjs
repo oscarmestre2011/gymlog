@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import { mkdirSync } from 'node:fs'
 
-const APP = 'https://oscarmestre2011.github.io/gymlog/'
+const APP = 'https://kairosentrena.com/app/'
 const here = dirname(fileURLToPath(import.meta.url))
 const shotsDir = join(here, '..', 'capturas')
 mkdirSync(shotsDir, { recursive: true })

@@ -25,7 +25,7 @@ async function probar(nombre, motor, dispositivo) {
      * no es seguro y el navegador no expone ninguna de estas APIs: la primera version de
      * este script daba "no" en todo por ese motivo.
      */
-    await page.goto('https://oscarmestre2011.github.io/gymlog/', { waitUntil: 'domcontentloaded', timeout: 45000 })
+    await page.goto('https://kairosentrena.com/app/', { waitUntil: 'domcontentloaded', timeout: 45000 })
     await page.waitForTimeout(1500)
 
     const api = await page.evaluate(() => {

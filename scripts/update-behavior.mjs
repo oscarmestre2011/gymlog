@@ -27,7 +27,7 @@ const distDir = join(projectDir, 'dist')
 const oldDir = join(projectDir, '.tmp-dist-antiguo')
 const PORT = 5393
 const ORIGIN = `http://localhost:${PORT}`
-const SUBPATH = '/gymlog/'
+const SUBPATH = '/app/'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -44,7 +44,7 @@ function serveFrom(getDir) {
   const server = createServer(async (req, res) => {
     try {
       const raw = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-      const withoutPrefix = raw.startsWith('/gymlog') ? raw.slice('/gymlog'.length) : raw
+      const withoutPrefix = raw.startsWith('/app') ? raw.slice('/app'.length) : raw
       const relative = withoutPrefix.replace(/^[/\\]+/, '')
       const dir = getDir()
       let filePath = join(dir, normalize(relative) === '' ? 'index.html' : normalize(relative))
@@ -120,14 +120,14 @@ try {
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(1500)
   let estado = await versionVisible()
-  console.log(`    fichero en uso: ${estado.script.replace('/gymlog/assets/', '')}`)
+  console.log(`    fichero en uso: ${estado.script.replace('/app/assets/', '')}`)
   console.log(`    service worker: ${estado.activo}, cache: ${estado.cache}`)
 
   console.log('\n--- 2) SE PUBLICA LA VERSION NUEVA (equivale a un git push) ---')
   sirviendoNueva = true
   await page.waitForTimeout(1000)
   estado = await versionVisible()
-  console.log(`    sin recargar, sigue usando: ${estado.script.replace('/gymlog/assets/', '')}`)
+  console.log(`    sin recargar, sigue usando: ${estado.script.replace('/app/assets/', '')}`)
 
   console.log('\n--- 3) Aperturas sucesivas de la app ---')
   for (let apertura = 1; apertura <= 4; apertura += 1) {
@@ -136,7 +136,7 @@ try {
     estado = await versionVisible()
     const esNueva = estado.script.includes(versionNueva.replace('.js', ''))
     console.log(
-      `    apertura ${apertura}: ${estado.script.replace('/gymlog/assets/', '')} ${esNueva ? '<-- YA ES LA NUEVA' : '(sigue la antigua)'}`,
+      `    apertura ${apertura}: ${estado.script.replace('/app/assets/', '')} ${esNueva ? '<-- YA ES LA NUEVA' : '(sigue la antigua)'}`,
     )
     if (esNueva) {
       console.log(`\nRESULTADO: la version nueva aparece en la apertura numero ${apertura}.`)

@@ -12,7 +12,7 @@
  */
 import { chromium, webkit, devices } from 'playwright'
 
-const APP = 'https://oscarmestre2011.github.io/gymlog/'
+const APP = 'https://kairosentrena.com/app/'
 
 async function probar(nombre, motor, dispositivo) {
   const browser = await motor.launch()

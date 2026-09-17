@@ -6,7 +6,7 @@
  * la app sigue mostrando la version anterior durante la siguiente apertura. Sin
  * aviso, parece que el cambio "no ha llegado".
  *
- * Uso:  node scripts/update-banner.mjs   (requiere dist/ compilado con base /gymlog/)
+ * Uso:  node scripts/update-banner.mjs   (requiere dist/ compilado con base /app/)
  */
 import { chromium, devices } from 'playwright'
 import { esperarApp } from './helpers.mjs'
@@ -34,7 +34,7 @@ function serve() {
   const server = createServer(async (req, res) => {
     try {
       const raw = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-      const withoutPrefix = raw.startsWith('/gymlog') ? raw.slice('/gymlog'.length) : raw
+      const withoutPrefix = raw.startsWith('/app') ? raw.slice('/app'.length) : raw
       const relative = withoutPrefix.replace(/^[/\\]+/, '')
       let filePath = join(distDir, normalize(relative) === '' ? 'index.html' : normalize(relative))
       try {
@@ -65,7 +65,7 @@ try {
   const context = await browser.newContext({ ...devices['Pixel 7'], locale: 'es-ES' })
   const page = await context.newPage()
 
-  await page.goto(`http://localhost:${PORT}/gymlog/`, { waitUntil: 'networkidle' })
+  await page.goto(`http://localhost:${PORT}/app/`, { waitUntil: 'networkidle' })
   await esperarApp(page, 20000)
   await page.waitForTimeout(800)
 

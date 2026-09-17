@@ -1,8 +1,8 @@
 # Publica la app en GitHub Pages cada vez que se sube un cambio a main.
 #
-# Resultado: una direccion HTTPS fija (https://oscarmestre2011.github.io/gymlog/)
-# que se actualiza sola. Esa direccion es la que se instala en el movil, y al
-# actualizarse se queda el mismo icono y los mismos datos.
+# Resultado: una direccion HTTPS fija (https://kairosentrena.com/app/) que se actualiza sola. Esa
+# direccion es la que se instala en el movil, y al actualizarse se queda el mismo icono y los
+# mismos datos.
 name: Publicar en GitHub Pages
 
 on:
@@ -43,11 +43,15 @@ jobs:
         run: npm test
 
       - name: Compilar
-        # GYMLOG_BASE deja las rutas de la app preparadas para vivir en /gymlog/,
-        # que es la subcarpeta que usa GitHub Pages en un repositorio de proyecto.
+        # GYMLOG_BASE deja las rutas de la app preparadas para vivir en /app/, que es la subcarpeta
+        # del dominio propio (https://kairosentrena.com/app/).
+        #
+        # Antes la app vivia en oscarmestre2011.github.io/gymlog/ y esto ponia /gymlog/. Se cambio
+        # al mudar el proyecto a kairosentrena.com. OJO: si se cambia esta carpeta hay que cambiar
+        # tambien la misma cadena en las pruebas (scripts/test-*.mjs y verify-pages.mjs).
         run: npm run build
         env:
-          GYMLOG_BASE: /gymlog/
+          GYMLOG_BASE: /app/
 
       - name: Preparar Pages
         uses: actions/configure-pages@v5

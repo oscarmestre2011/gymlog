@@ -10,7 +10,7 @@
  */
 import { chromium } from 'playwright'
 
-const url = process.argv[2] ?? 'https://oscarmestre2011.github.io/gymlog/'
+const url = process.argv[2] ?? 'https://kairosentrena.com/app/'
 
 const browser = await chromium.launch()
 try {

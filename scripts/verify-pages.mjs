@@ -1,6 +1,6 @@
 /*
  * Verifica que la app funciona PUBLICADA EN UNA SUBCARPETA, tal y como la sirve
- * GitHub Pages (https://usuario.github.io/gymlog/).
+ * GitHub Pages (https://kairosentrena.com/app/).
  *
  * Comprueba lo que se rompe de verdad en ese escenario: rutas de los ficheros,
  * ambito del service worker, start_url del manifiesto y navegacion directa a
@@ -26,7 +26,7 @@ const run = promisify(execFile)
 const here = dirname(fileURLToPath(import.meta.url))
 const projectDir = join(here, '..')
 const distDir = join(projectDir, '.tmp-dist-pages')
-const SUBPATH = '/gymlog/'
+const SUBPATH = '/app/'
 const PORT = 5395
 
 console.log('Compilando para subcarpeta en .tmp-dist-pages (sin tocar dist/)...')
@@ -49,18 +49,18 @@ const MIME = {
 }
 
 /**
- * Servidor que imita a GitHub Pages: la app vive bajo /gymlog/ y cualquier ruta
+ * Servidor que imita a GitHub Pages: la app vive bajo /app/ y cualquier ruta
  * desconocida devuelve el index (comportamiento de sitio estatico con fallback).
  *
  * OJO: hay que quitar el prefijo ANTES de normalizar la ruta. En Windows,
- * path.normalize() convierte "/gymlog/x" en "\\gymlog\\x", y la comprobacion del
+ * path.normalize() convierte "/app/x" en "\\app\\x", y la comprobacion del
  * prefijo fallaria en silencio sirviendo siempre el index.
  */
 function servePages() {
   const server = createServer(async (req, res) => {
     try {
       const raw = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-      const withoutPrefix = raw.startsWith('/gymlog') ? raw.slice('/gymlog'.length) : raw
+      const withoutPrefix = raw.startsWith('/app') ? raw.slice('/app'.length) : raw
       const relative = withoutPrefix.replace(/^[/\\]+/, '')
 
       // Proteccion contra rutas que intenten salir de dist/.
@@ -109,7 +109,7 @@ try {
   /* 1. El index generado apunta a las rutas correctas */
   const html = await readFile(join(distDir, 'index.html'), 'utf8')
   const usesAbsoluteBase = html.includes(`${SUBPATH}assets/`)
-  check('El HTML generado usa rutas con la base /gymlog/', usesAbsoluteBase)
+  check('El HTML generado usa rutas con la base /app/', usesAbsoluteBase)
 
   const relativePaths = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1])
   const suspicious = relativePaths.filter((p) => p.startsWith('/') && !p.startsWith(SUBPATH))
@@ -120,7 +120,7 @@ try {
   await esperarApp(page, 20000)
   await page.waitForTimeout(700)
   const homeText = await page.locator('body').innerText()
-  check('La app arranca servida desde /gymlog/', homeText.includes('Hoy es'))
+  check('La app arranca servida desde /app/', homeText.includes('Hoy es'))
   check('No hay peticiones que devuelvan error', notFound.length === 0, notFound.slice(0, 3).join(' | '))
   check('No hay errores de JavaScript', jsErrors.length === 0, jsErrors.join(' | '))
 

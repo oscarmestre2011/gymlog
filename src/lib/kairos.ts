@@ -2,7 +2,7 @@
  * Lo que la app dice de si misma hacia fuera: la web de presentacion.
  *
  * FUENTE UNICA: de aqui sale el archivo `publicar/kairos.json` que consume la web
- * (https://oscarmestre2011.github.io/kairos/). Se genera con `npm run web`.
+ * (https://kairosentrena.com/). Se genera con `npm run web`.
  *
  * El motivo de que esto exista: la web y la app cuentan lo mismo, y si se escriben dos veces
  * acaban contradiciendose. El ejemplo real: la app avisa de que en iPhone el sonido del aviso no
@@ -16,11 +16,17 @@
 import { AYUDA } from './ayuda'
 import { VERSIONES } from './changelog'
 
-/** Direccion publica de la app. Vive aqui para que la web no la lleve escrita a mano. */
-export const ENLACE_APP = 'https://oscarmestre2011.github.io/gymlog/'
+/**
+ * Direccion publica de la app.
+ *
+ * Vive aqui para que no haya que cambiarla en dos sitios. Se mudo desde
+ * `https://oscarmestre2011.github.io/gymlog/` a `https://kairosentrena.com/app/` el 17-09-2026,
+ * al comprar el dominio propio. La direccion vieja redirige a esta.
+ */
+export const ENLACE_APP = 'https://kairosentrena.com/app/'
 
 /** Direccion de la web de presentacion. */
-export const ENLACE_WEB = 'https://oscarmestre2011.github.io/kairos/'
+export const ENLACE_WEB = 'https://kairosentrena.com/'
 
 /* ------------------------------- apoyo voluntario ------------------------------- */
 

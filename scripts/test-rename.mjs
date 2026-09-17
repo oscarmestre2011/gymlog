@@ -24,7 +24,7 @@ const trabajo = join(projectDir, '.tmp-rename')
 const dirAntiguo = join(trabajo, 'antiguo')
 const dirNuevo = join(projectDir, 'dist')
 const PORT = 5384
-const SUBPATH = '/gymlog/'
+const SUBPATH = '/app/'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -62,7 +62,7 @@ console.log(`Identificador interno (id): "${manifiestoNuevo.id}" — no ha cambi
 function serve(getDir) {
   const server = createServer(async (req, res) => {
     const raw = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-    const sinPrefijo = raw.startsWith('/gymlog') ? raw.slice('/gymlog'.length) : raw
+    const sinPrefijo = raw.startsWith('/app') ? raw.slice('/app'.length) : raw
     const relative = sinPrefijo.replace(/^[/\\]+/, '')
     const dir = getDir()
     const esAsset = /\.(js|css)$/.test(relative)

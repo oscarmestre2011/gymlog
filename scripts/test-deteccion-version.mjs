@@ -31,7 +31,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const raiz = join(here, '..')
 const VIEJA = join(raiz, '.tmp-versiones', 'v15', '.tmp-dist15')
 const NUEVA = join(raiz, 'dist')
-const BASE = '/gymlog/'
+const BASE = '/app/'
 
 if (!existsSync(join(NUEVA, 'index.html'))) {
   console.error('Falta dist/. Ejecuta `npm run build` antes.')

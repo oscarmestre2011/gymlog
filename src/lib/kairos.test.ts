@@ -185,8 +185,8 @@ describe('apoyo voluntario (donaciones)', () => {
 })
 describe('enlaces y version que se anuncian', () => {
   it('la direccion de la app es la publicada de verdad', () => {
-    expect(ENLACE_APP).toBe('https://oscarmestre2011.github.io/gymlog/')
-    expect(ENLACE_WEB).toBe('https://oscarmestre2011.github.io/kairos/')
+    expect(ENLACE_APP).toBe('https://kairosentrena.com/app/')
+    expect(ENLACE_WEB).toBe('https://kairosentrena.com/')
   })
 
   it('se anuncia la version mas reciente, no una copiada a mano', () => {

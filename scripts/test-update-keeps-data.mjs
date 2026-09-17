@@ -32,7 +32,7 @@ const projectDir = join(here, '..')
 const workDir = join(projectDir, '.tmp-versiones')
 const dirB = join(workDir, 'B')
 const PORT = 5386
-const SUBPATH = '/gymlog/'
+const SUBPATH = '/app/'
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -71,7 +71,7 @@ async function nombreJs(dir) {
 function serve(getDir) {
   const server = createServer(async (req, res) => {
     const raw = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-    const sinPrefijo = raw.startsWith('/gymlog') ? raw.slice('/gymlog'.length) : raw
+    const sinPrefijo = raw.startsWith('/app') ? raw.slice('/app'.length) : raw
     const relative = sinPrefijo.replace(/^[/\\]+/, '')
     const dir = getDir()
     const esAsset = /\.(js|css)$/.test(relative)

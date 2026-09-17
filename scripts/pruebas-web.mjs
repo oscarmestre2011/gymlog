@@ -30,7 +30,7 @@ const REVISIONES = fileURLToPath(new URL('../.tmp-web/', import.meta.url))
 await mkdir(REVISIONES, { recursive: true })
 
 /** Direccion publicada. Se comprueba siempre al final, ademas de la copia local. */
-const PUBLICADA = 'https://oscarmestre2011.github.io/kairos/'
+const PUBLICADA = 'https://kairosentrena.com/'
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8',
@@ -176,8 +176,23 @@ try {
   comprobar(/1\.\d+\.\d+/.test(versionPie), 'El pie muestra la version real de la app', versionPie.trim())
 
   comprobar(
-    (await pagina.locator('a[href="https://oscarmestre2011.github.io/gymlog/"]').count()) >= 3,
+    (await pagina.locator('a[href="https://kairosentrena.com/app/"]').count()) >= 3,
     'Hay enlaces a la app publicada',
+  )
+
+  /*
+   * Y que no quede ni un resto de las direcciones viejas de GitHub Pages. Esto vigila la mudanza al
+   * dominio propio: si alguien pega un enlace antiguo en el HTML, la prueba lo dice.
+   */
+  const enlacesViejos = await pagina.evaluate(() =>
+    [...document.querySelectorAll('[href],[src]')]
+      .map((n) => n.getAttribute('href') ?? n.getAttribute('src'))
+      .filter((u) => u && /oscarmestre2011\.github\.io\/(gymlog|kairos)/i.test(u)),
+  )
+  comprobar(
+    enlacesViejos.length === 0,
+    'No queda ningun enlace a la direccion vieja',
+    enlacesViejos.join(', '),
   )
 
   // Imagenes: que todas hayan cargado de verdad.

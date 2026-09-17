@@ -17,7 +17,7 @@ const projectDir = join(here, '..')
 const distDir = join(projectDir, 'dist')
 const trabajo = join(projectDir, '.tmp-diagnose')
 const PORT = 5382
-const SUBPATH = '/gymlog/'
+const SUBPATH = '/app/'
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -53,7 +53,7 @@ console.log(`Publicado (version nueva): ${jsActual}\n`)
 function serve(getDir) {
   const server = createServer(async (req, res) => {
     const raw = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-    const sinPrefijo = raw.startsWith('/gymlog') ? raw.slice('/gymlog'.length) : raw
+    const sinPrefijo = raw.startsWith('/app') ? raw.slice('/app'.length) : raw
     const relative = sinPrefijo.replace(/^[/\\]+/, '')
     const dir = getDir()
     let filePath = join(dir, normalize(relative === '' ? 'index.html' : relative))

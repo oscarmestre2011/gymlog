@@ -13,7 +13,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-const url = process.argv[2] ?? 'https://oscarmestre2011.github.io/gymlog/'
+const url = process.argv[2] ?? 'https://kairosentrena.com/app/'
 const here = dirname(fileURLToPath(import.meta.url))
 const shotsDir = join(here, '..', 'capturas')
 mkdirSync(shotsDir, { recursive: true })
@@ -89,7 +89,7 @@ try {
     }
   })
   check('El service worker esta activo', sw.soportado && sw.estado === 'activated', `${sw.estado ?? '-'} ambito=${sw.ambito ?? '-'}`)
-  check('El ambito es la subcarpeta /gymlog/', sw.ambito === '/gymlog/', String(sw.ambito))
+  check('El ambito es la subcarpeta /app/', sw.ambito === '/app/', String(sw.ambito))
   check('Hay cache creada', Boolean(sw.cache), String(sw.cache))
 
   /* --------------------------- 5. sin conexion ---------------------- */

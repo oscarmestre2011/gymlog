@@ -14,7 +14,7 @@ import { mkdirSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-const url = process.argv[2] ?? 'https://oscarmestre2011.github.io/gymlog/'
+const url = process.argv[2] ?? 'https://kairosentrena.com/app/'
 const here = dirname(fileURLToPath(import.meta.url))
 const shotsDir = join(here, '..', 'capturas')
 mkdirSync(shotsDir, { recursive: true })

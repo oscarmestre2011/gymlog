@@ -9,7 +9,7 @@
  */
 import { chromium, devices } from 'playwright'
 
-const url = process.argv[2] ?? 'https://oscarmestre2011.github.io/gymlog/'
+const url = process.argv[2] ?? 'https://kairosentrena.com/app/'
 
 const results = []
 function check(name, condition, detail = '') {
@@ -53,7 +53,7 @@ try {
 
   check('Se sirve por HTTPS (contexto seguro)', info.secure && info.protocolo === 'https:', `${info.protocolo} secure=${info.secure}`)
   check('El service worker esta activo', info.swEstado === 'activated', String(info.swEstado))
-  check('El service worker tiene el ambito correcto', info.swAmbito === '/gymlog/', String(info.swAmbito))
+  check('El service worker tiene el ambito correcto', info.swAmbito === '/app/', String(info.swAmbito))
   check('El service worker controla la pagina', info.swControla)
 
   const m = info.manifest
