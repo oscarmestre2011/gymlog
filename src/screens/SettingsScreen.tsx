@@ -13,6 +13,7 @@ import { seedIfEmpty } from '../db/seed'
 import { ConfirmDialog } from '../components/Modal'
 import { descargarArchivo, descargarCopiaDeSeguridad } from '../lib/descargar'
 import { VERSIONES } from '../lib/changelog'
+import { APOYO, ENLACE_APOYO, opcionesDeApoyo } from '../lib/kairos'
 import { audioDisponible, duracionDelAviso } from '../lib/audio'
 import { Novedades } from '../components/Novedades'
 import {
@@ -186,6 +187,41 @@ export function SettingsScreen({
             📖 Ver la ayuda y las instrucciones
           </button>
         ) : null}
+      </div>
+
+      {/*
+        ------------------------------ apoyar el proyecto ------------------------------
+        Donacion voluntaria por PayPal. Tres reglas que no se pueden romper:
+         - NO desbloquea nada. Si desbloqueara algo seria una venta, con IVA y 14 dias de
+           desistimiento. Por eso se dice con todas las letras.
+         - NO se dice que desgrave: las donaciones a particulares no desgravan.
+         - NO se promete nada a cambio (ni contenido, ni soporte prioritario).
+        El enlace viene de src/lib/kairos.ts, que es la misma fuente que usa la web.
+      */}
+      <div className="card">
+        <h2 className="card-title">Apoyar el proyecto</h2>
+        <p className="small muted" style={{ marginTop: 0 }}>
+          {APOYO.texto}
+        </p>
+        <div className="row wrap" style={{ gap: 8 }}>
+          {opcionesDeApoyo().map((opcion) => (
+            <a
+              key={opcion.cantidad}
+              className="btn"
+              href={opcion.enlace}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              ☕ {opcion.cantidad} €
+            </a>
+          ))}
+          <a className="btn ghost" href={ENLACE_APOYO} target="_blank" rel="noopener noreferrer">
+            Otra cantidad
+          </a>
+        </div>
+        <p className="tiny muted" style={{ marginBottom: 0, marginTop: 10 }}>
+          {APOYO.aclaracion}
+        </p>
       </div>
 
       {/* ------------------------------- descanso ------------------------------ */}

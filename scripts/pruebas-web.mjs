@@ -21,7 +21,10 @@ import { extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 
-const RAIZ = resolve(process.argv[2] ?? fileURLToPath(new URL('../../kairos-web', import.meta.url)))
+// El primer argumento que NO sea un modificador (--algo) es la carpeta de la web. Si no se filtra,
+// pasar `--sin-publicada` se toma como ruta y el servidor busca en una carpeta que no existe.
+const carpetaIndicada = process.argv.slice(2).find((a) => !a.startsWith('-'))
+const RAIZ = resolve(carpetaIndicada ?? fileURLToPath(new URL('../../kairos-web', import.meta.url)))
 /** Las capturas de revision no se publican: van a una carpeta temporal ignorada por git. */
 const REVISIONES = fileURLToPath(new URL('../.tmp-web/', import.meta.url))
 await mkdir(REVISIONES, { recursive: true })
@@ -221,6 +224,54 @@ try {
   )
   comprobar(anclasRotas.length === 0, 'Todas las anclas del menu existen', anclasRotas.join(', '))
 
+  /*
+   * Donacion voluntaria. Se comprueba lo que la hace legal, no solo que los botones esten:
+   * que NO prometa nada a cambio y que NO diga que desgrava.
+   */
+  const apoyo = pagina.locator('#apoyo')
+  comprobar(await apoyo.isVisible(), 'La seccion de apoyo voluntario se ve')
+
+  const botonesApoyo = await pagina.locator('#apoyo-botones a').count()
+  comprobar(botonesApoyo === 4, 'Hay 3 cantidades y la opcion de otra cantidad', `${botonesApoyo} botones`)
+
+  const enlacesApoyo = await pagina
+    .locator('#apoyo-botones a')
+    .evaluateAll((nodos) => nodos.map((n) => n.getAttribute('href')))
+  comprobar(
+    enlacesApoyo.every((h) => /^https:\/\/paypal\.me\/[A-Za-z0-9._-]+/.test(h ?? '')),
+    'Todos los botones llevan a PayPal y por https',
+    enlacesApoyo.join(', '),
+  )
+  comprobar(
+    enlacesApoyo.filter((h) => /\d+EUR$/.test(h ?? '')).length === 3,
+    'Las tres cantidades llevan su importe en el enlace',
+    enlacesApoyo.join(', '),
+  )
+  const atributosApoyo = await pagina
+    .locator('#apoyo-botones a')
+    .evaluateAll((nodos) => nodos.map((n) => n.getAttribute('rel')))
+  comprobar(
+    atributosApoyo.every((r) => (r ?? '').includes('noopener')),
+    'Los enlaces de pago abren con noopener (no se queda la web a merced de la otra pagina)',
+  )
+
+  const textoApoyo = await apoyo.innerText()
+  comprobar(/no desbloquea nada/i.test(textoApoyo), 'El apoyo dice que no desbloquea nada')
+  comprobar(/voluntaria/i.test(textoApoyo), 'El apoyo se presenta como donacion voluntaria')
+  comprobar(/gratis/i.test(textoApoyo), 'El apoyo dice que la app es gratis')
+  comprobar(
+    /(no|nunca|tampoco)\s+(?:te\s+)?desgrav/i.test(textoApoyo),
+    'El apoyo aclara que no desgrava',
+  )
+  comprobar(
+    !/acceso|soporte prioritario|funciones? extra|contenido exclusivo/i.test(textoApoyo),
+    'El apoyo no promete nada a cambio (seria una venta, no una donacion)',
+  )
+  comprobar(
+    (await pagina.locator('.pie-enlaces a[href*="paypal.me"]').count()) === 1,
+    'El pie tambien tiene el enlace de apoyo',
+  )
+
   // El aviso de instalar solo aparece cuando el navegador lo ofrece.
   const botonInstalar = pagina.locator('#boton-instalar')
   comprobar(await botonInstalar.isHidden(), 'El boton de instalar empieza oculto si no hay aviso nativo')
@@ -361,6 +412,13 @@ try {
   const pasosSinJs = await pSinJs.locator('.pasos li').count()
   comprobar(pasosSinJs === 6, 'Sin JavaScript estan los pasos de las dos plataformas', `${pasosSinJs} pasos`)
   comprobar(await pSinJs.locator('#boton-instalar').isHidden(), 'Sin JavaScript no aparece el boton de instalar')
+  // La donacion se rellena con JavaScript: sin el, la seccion se queda oculta a proposito (mejor
+  // no enseñar una donacion a medias) y el enlace del pie sigue estando.
+  comprobar(await pSinJs.locator('#apoyo').isHidden(), 'Sin JavaScript no se enseña una donacion a medias')
+  comprobar(
+    (await pSinJs.locator('.pie-enlaces a[href*="paypal.me"]').count()) === 1,
+    'Sin JavaScript el enlace de apoyo del pie sigue estando',
+  )
 
   await contexto.close()
   await movil.close()
@@ -447,6 +505,7 @@ if (process.argv.includes('--sin-publicada')) {
       'styles.css',
       'main.js',
       'publicar/kairos.json',
+      'publicar/apoyo.json',
       'robots.txt',
       'sitemap.xml',
       'assets/inicio.jpg',

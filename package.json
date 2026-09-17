@@ -40,6 +40,7 @@
     "test:versiones": "node scripts/test-deteccion-version.mjs",
     "test:novedades": "node scripts/test-novedades.mjs",
     "test:ayuda-texto": "node scripts/test-pixeles-ayuda.mjs",
+    "test:apoyo": "node scripts/test-apoyo.mjs",
     "test:web": "node scripts/pruebas-web.mjs",
     "test:escritura": "node scripts/test-escritura-carpeta.mjs",
     "test:carpeta-guardar": "node scripts/test-guardar-carpeta.mjs",

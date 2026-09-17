@@ -22,6 +22,59 @@ export const ENLACE_APP = 'https://oscarmestre2011.github.io/gymlog/'
 /** Direccion de la web de presentacion. */
 export const ENLACE_WEB = 'https://oscarmestre2011.github.io/kairos/'
 
+/* ------------------------------- apoyo voluntario ------------------------------- */
+
+/**
+ * Enlace de donacion voluntaria (PayPal.me).
+ *
+ * Reglas, y no son de estilo:
+ *  - La donacion NO desbloquea nada. Si desbloqueara algo, dejaria de ser una donacion y pasaria a
+ *    ser una venta, con IVA y con derecho de desistimiento de 14 dias. Por eso la app y la web lo
+ *    dicen con todas las letras: "no desbloquea nada".
+ *  - No se dice en ningun sitio que desgrave: las donaciones a particulares no desgravan.
+ *  - No se promete nada a cambio, ni contenido exclusivo, ni soporte prioritario.
+ */
+export const ENLACE_APOYO = 'https://paypal.me/oscarmuela85'
+
+/** Cantidades sugeridas. Deliberadamente NO hay importes de 1-3 €: PayPal se queda casi el 15 %. */
+export const CANTIDADES_APOYO = [5, 10, 20]
+
+/**
+ * Enlace de donacion con una cantidad sugerida.
+ *
+ * El parametro `amount` es una ayuda, no una obligacion: PayPal lo usa para rellenar el importe y,
+ * si algun dia dejara de aceptarlo, el enlace sigue funcionando y la cantidad se escribe a mano.
+ * Por eso el enlace pelado (`ENLACE_APOYO`) siempre vale.
+ */
+export function enlaceApoyoCon(cantidad: number): string {
+  if (!Number.isFinite(cantidad) || cantidad <= 0) return ENLACE_APOYO
+  return `${ENLACE_APOYO}/${cantidad}EUR`
+}
+
+/** Los importes que se ofrecen, con su enlace ya montado. */
+export function opcionesDeApoyo(): { cantidad: number; enlace: string }[] {
+  return CANTIDADES_APOYO.map((cantidad) => ({ cantidad, enlace: enlaceApoyoCon(cantidad) }))
+}
+
+/**
+ * El texto del apoyo, escrito UNA vez.
+ *
+ * Lo usan los dos sitios (la tarjeta de Ajustes y la seccion de la web), y las pruebas vigilan que
+ * no diga nada que no sea cierto: que no desbloquee nada y que no desgrave.
+ */
+export const APOYO = {
+  titulo: 'Kairós es gratis, y lo será',
+  texto:
+    'Sin anuncios, sin suscripciones y sin funciones capadas. Si te resulta útil y quieres aportar tu granito, puedes dejar una donación voluntaria por PayPal.',
+  aclaracion:
+    'No desbloquea nada: la app sigue igual de gratis y completa. Tampoco desgrava, porque no es una donación a una ONG.',
+}
+
+/** Para las pruebas: comprueba que el enlace de apoyo es de PayPal y con https. */
+export function enlaceApoyoSeguro(): boolean {
+  return /^https:\/\/(www\.)?paypal\.me\/[A-Za-z0-9._-]+$/.test(ENLACE_APOYO)
+}
+
 export interface CaracteristicaWeb {
   /** Emoji que la representa. */
   icono: string

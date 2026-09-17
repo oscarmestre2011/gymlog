@@ -191,6 +191,26 @@ textarea {
   transform: scale(0.97);
 }
 
+/*
+ * Un boton que ademas es un enlace (`<a class="btn">`, por ejemplo para donar por PayPal).
+ *
+ * Hace falta porque `.btn` se penso para `<button>`: en un `<a>` el navegador pinta el texto azul
+ * y subrayado, y queda como un enlace roto en medio de la pantalla. Se vio en la tarjeta de apoyo
+ * de Ajustes: los botones de 5, 10 y 20 € salian azules y subrayados.
+ *
+ * Las pruebas no lo pillaron (los elementos estaban, y el texto era correcto): se vio mirando la
+ * captura. Ahora hay una comprobacion en scripts/test-apoyo.mjs que mide el color y el subrayado.
+ */
+a.btn {
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a.btn.primary {
+  color: var(--accent-ink);
+}
+
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);

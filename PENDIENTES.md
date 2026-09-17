@@ -67,6 +67,15 @@ Ultima revision: 16 de septiembre de 2026, con la version **1.1.0** publicada.
   con `loading="lazy"` que quedan lejos de la pantalla salen como marcos negros vacios, y con la
   cabecera fija capturada a mitad de pagina si no se vuelve arriba antes. Las dos cosas parecen
   fallos de la web y son de la captura.
+- **Un `<a class="btn">` NO se ve como un boton.** `.btn` esta pensado para `<button>`: en un enlace
+  el navegador pinta el texto azul y subrayado. Paso con los botones de donacion de Ajustes, que
+  salieron azules y subrayados en medio de la pantalla. Arreglado con una regla `a.btn` y, sobre
+  todo, con una comprobacion que MIDE el color y el subrayado (`scripts/test-apoyo.mjs`), porque
+  las comprobaciones de "el elemento existe" y "el texto es correcto" no lo pillaron: se vio
+  mirando la captura.
+- **Los enlaces que se reescriben con JavaScript pueden pisarse entre ellos.** En la web, una
+  funcion que ponia el enlace de donacion del pie reescribia TAMBIEN los botones de cantidad, y los
+  cuatro acabaron sin importe. Lo cazo una comprobacion que mira que cada enlace lleve su cantidad.
 
 ## Pendiente
 

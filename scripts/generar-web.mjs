@@ -15,9 +15,12 @@
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import {
+  APOYO,
   ENLACE_APP,
   ENLACE_WEB,
+  ENLACE_APOYO,
   loQueHace,
+  opcionesDeApoyo,
   preguntasParaLaWeb,
   versionParaLaWeb,
 } from '../src/lib/kairos'
@@ -27,6 +30,8 @@ import { VERSIONES } from '../src/lib/changelog'
 const destino = resolve(
   process.argv[2] ?? resolve(process.cwd(), '..', 'kairos-web', 'publicar', 'kairos.json'),
 )
+/** El apoyo va en su propio archivo: el navegador de la web lo pide aparte, y solo si hace falta. */
+const destinoApoyo = resolve(dirname(destino), 'apoyo.json')
 
 const datos = {
   version: versionParaLaWeb(),
@@ -36,6 +41,22 @@ const datos = {
   enlaceWeb: ENLACE_WEB,
   caracteristicas: loQueHace(),
   preguntas: preguntasParaLaWeb(),
+}
+
+/**
+ * El texto del apoyo sale de src/lib/kairos.ts (APOYO), el mismo que usa la tarjeta de Ajustes
+ * dentro de la app. Aqui solo se le anaden los enlaces ya montados.
+ *
+ * Lo que NO se puede decir, y por eso esta escrito una sola vez y con pruebas:
+ *  - que desbloquee algo (seria una venta, con IVA y 14 dias de desistimiento),
+ *  - que desgrave (las donaciones a particulares no desgravan).
+ */
+const apoyo = {
+  enlace: ENLACE_APOYO,
+  cantidades: opcionesDeApoyo(),
+  titulo: APOYO.titulo,
+  texto: APOYO.texto,
+  aclaracion: APOYO.aclaracion,
 }
 
 // Comprobaciones que evitan publicar una web vacia sin enterarse.
@@ -48,10 +69,20 @@ if (datos.preguntas.length < 10) {
 if (!/^\d+\.\d+\.\d+$/.test(datos.version)) {
   throw new Error(`Version rara: ${datos.version}`)
 }
+// Un enlace de apoyo mal escrito seria peor que no ponerlo: nadie podria donar y no se notaria.
+if (!/^https:\/\/(www\.)?paypal\.me\/[A-Za-z0-9._-]+$/.test(apoyo.enlace)) {
+  throw new Error(`Enlace de apoyo con mala pinta: ${apoyo.enlace}`)
+}
+if (apoyo.cantidades.length === 0) {
+  throw new Error('No hay cantidades de apoyo: revisa CANTIDADES_APOYO en src/lib/kairos.ts')
+}
 
 mkdirSync(dirname(destino), { recursive: true })
 writeFileSync(destino, JSON.stringify(datos, null, 2) + '\n', 'utf8')
+writeFileSync(destinoApoyo, JSON.stringify(apoyo, null, 2) + '\n', 'utf8')
 
 console.log(`kairos.json escrito en ${destino}`)
 console.log(`  version ${datos.version} (${datos.fecha})`)
 console.log(`  ${datos.caracteristicas.length} caracteristicas, ${datos.preguntas.length} preguntas`)
+console.log(`apoyo.json escrito en ${destinoApoyo}`)
+console.log(`  ${apoyo.enlace} · ${apoyo.cantidades.map((c) => `${c.cantidad}€`).join(', ')}`)

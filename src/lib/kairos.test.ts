@@ -10,9 +10,15 @@ import { describe, expect, it } from 'vitest'
 import { AYUDA } from './ayuda'
 import { versionMasReciente, VERSIONES } from './changelog'
 import {
+  APOYO,
+  CANTIDADES_APOYO,
+  ENLACE_APOYO,
   ENLACE_APP,
   ENLACE_WEB,
+  enlaceApoyoCon,
+  enlaceApoyoSeguro,
   loQueHace,
+  opcionesDeApoyo,
   preguntasParaLaWeb,
   versionParaLaWeb,
 } from './kairos'
@@ -104,6 +110,79 @@ describe('preguntas frecuentes de la web', () => {
   })
 })
 
+describe('apoyo voluntario (donaciones)', () => {
+  it('el enlace es de PayPal y con https', () => {
+    expect(ENLACE_APOYO).toMatch(/^https:\/\/(www\.)?paypal\.me\/[A-Za-z0-9._-]+$/)
+    expect(enlaceApoyoSeguro()).toBe(true)
+  })
+
+  it('las cantidades sugeridas tienen su enlace bien montado', () => {
+    const opciones = opcionesDeApoyo()
+    expect(opciones.length).toBeGreaterThanOrEqual(2)
+    for (const opcion of opciones) {
+      expect(opcion.cantidad).toBeGreaterThan(0)
+      expect(opcion.enlace.startsWith(ENLACE_APOYO)).toBe(true)
+      expect(opcion.enlace).toContain(String(opcion.cantidad))
+    }
+  })
+
+  it('no se ofrecen cantidades ridiculas: PayPal se queda casi el 15 % de las pequenas', () => {
+    // 2,9 % + 0,35 € por cobro: en 1 € la comision es de un 38 %. No tiene sentido pedirlo.
+    for (const cantidad of CANTIDADES_APOYO) {
+      expect(cantidad, 'una donacion de menos de 5 € la devora la comision').toBeGreaterThanOrEqual(5)
+    }
+  })
+
+  it('una cantidad invalida no rompe el enlace', () => {
+    // Si alguien llama con basura, se devuelve el enlace pelado: PayPal deja escribirla a mano.
+    expect(enlaceApoyoCon(0)).toBe(ENLACE_APOYO)
+    expect(enlaceApoyoCon(-5)).toBe(ENLACE_APOYO)
+    expect(enlaceApoyoCon(Number.NaN)).toBe(ENLACE_APOYO)
+  })
+
+  it('el texto del apoyo dice que NO desbloquea nada', () => {
+    /*
+     * Esta es la prueba que de verdad importa de las donaciones. Si la donacion desbloqueara algo,
+     * dejaria de ser una donacion y seria una venta: con IVA que ingresar y con derecho de
+     * desistimiento de 14 dias. Se dice claro, en la app y en la web.
+     */
+    expect(APOYO.aclaracion).toMatch(/no desbloquea nada/i)
+    expect(APOYO.texto).toMatch(/voluntaria/i)
+  })
+
+  it('nunca dice que desgrave', () => {
+    /*
+     * Las donaciones a particulares no desgravan (desgravan a ONG y fundaciones). Decir lo
+     * contrario seria publicidad engañosa, y en la app de un profesor seria ademas un mal consejo.
+     *
+     * Ojo con la forma de comprobarlo: la palabra "desgrava" SI puede aparecer, pero solo negada
+     * ("tampoco desgrava..."). Prohibir la palabra a secas seria prohibir la advertencia correcta,
+     * que es justo lo que hay que decir.
+     */
+    // Las tres formas validas de negarlo: "no desgrava", "nunca desgrava", "tampoco desgrava".
+    expect(APOYO.aclaracion).toMatch(/\b(no|nunca|tampoco)\s+(?:te\s+)?desgrav/i)
+    const frases = APOYO.aclaracion.split(/(?<=\.)\s+/)
+    for (const frase of frases) {
+      if (!/desgrav/i.test(frase)) continue
+      expect(frase, `frase que promete desgravacion: "${frase}"`).toMatch(
+        /\b(no|nunca|tampoco)\s+desgrav/i,
+      )
+    }
+  })
+
+  it('no se promete nada a cambio', () => {
+    const todo = `${APOYO.texto} ${APOYO.aclaracion}`.toLowerCase()
+    for (const promesa of ['acceso', 'soporte prioritario', 'funciones extra', 'versión completa']) {
+      expect(todo, `el apoyo no puede prometer "${promesa}"`).not.toContain(promesa)
+    }
+  })
+
+  it('el texto del apoyo es el mismo que publica la web', () => {
+    // Si alguien cambia uno y no el otro, la app y la web dirian cosas distintas de lo mismo.
+    expect(APOYO.titulo).toBe('Kairós es gratis, y lo será')
+    expect(opcionesDeApoyo().length).toBe(CANTIDADES_APOYO.length)
+  })
+})
 describe('enlaces y version que se anuncian', () => {
   it('la direccion de la app es la publicada de verdad', () => {
     expect(ENLACE_APP).toBe('https://oscarmestre2011.github.io/gymlog/')
