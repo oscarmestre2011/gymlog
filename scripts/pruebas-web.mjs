@@ -225,6 +225,27 @@ try {
   comprobar(anclasRotas.length === 0, 'Todas las anclas del menu existen', anclasRotas.join(', '))
 
   /*
+   * La seccion del principio: el argumento de la pagina no es "la memoria falla", es que la base
+   * del progreso es el registro. Si alguien la reescribe y se lleva por delante la idea, esto lo
+   * dice (y el enlace desde "Que hace" dejaria de tener sentido).
+   */
+  const principio = await pagina.locator('#progresion').innerText()
+  comprobar(/progresi[oó]n/i.test(principio), 'La seccion del principio habla de la progresion')
+  comprobar(/registro|apuntar/i.test(principio), 'Y de que la base es apuntar y registrar')
+  comprobar(
+    /músculo responde|un poco más/i.test(principio),
+    'Explica la idea en lenguaje llano (pedir un poco más que la ultima vez)',
+  )
+  comprobar(
+    !/no es entrenar\. es acordarse/i.test(principio),
+    'Ya no se apoya en "la memoria falla" como argumento principal',
+  )
+  comprobar(
+    (await pagina.locator('a[href="#progresion"]').count()) >= 1,
+    'Hay al menos un enlace que lleva al principio desde el resto de la pagina',
+  )
+
+  /*
    * Donacion voluntaria. Se comprueba lo que la hace legal, no solo que los botones esten:
    * que NO prometa nada a cambio y que NO diga que desgrava.
    */
