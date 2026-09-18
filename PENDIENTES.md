@@ -142,3 +142,18 @@ Queda pendiente comprobar en el movil, ya con el arreglo:
 Estan en `Informe - publicar en las tiendas.md`, en la carpeta de arriba: cuentas de
 desarrollador, comisiones, el filtro de los 12 probadores de Google, y que para iOS hace falta
 un Mac.
+
+**Y hay una condicion de GitHub Pages que hay que recordar ese dia:** GitHub no permite usar Pages
+como alojamiento gratuito de algo "dirigido a facilitar transacciones comerciales o a dar software
+de pago como servicio" ([limites de GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits)).
+Hoy no aplica: la app es gratis, sin cuentas y sin compras. **Pero el dia que se venda la version
+completa, la APP tendria que mudarse a otro alojamiento** (Cloudflare Pages o Netlify tienen planes
+gratuitos mas permisivos; uno de pago son unos 5 €/mes). La web de presentacion podria quedarse
+donde esta.
+
+Del resto de limites de Pages no hay que preocuparse ni de lejos: son 100 GB al mes de trafico y
+1,9 MB es todo lo que se sirve. Con 1.000 usuarios al mes no se llega ni a 1,5 GB. Y como la app se
+guarda en el movil al instalarla, solo pide a GitHub cuando comprueba si hay version nueva.
+
+> Nota de Oscar (18-09-2026): **cree que no llegara a venderla**. Se deja apuntado por si cambia de
+> idea, que entonces hay que hacer esto antes de cobrar la primera vez.
