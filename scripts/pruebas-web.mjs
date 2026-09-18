@@ -151,6 +151,27 @@ try {
 
   const h1 = await pagina.locator('h1').first().innerText()
   comprobar(h1.length > 15, 'Hay titular en la portada', h1)
+  /*
+   * El titular es la primera frase que lee quien entra, y costo decidirlo: se probaron "La libreta
+   * de entrenamiento que ya llevas en el bolsillo" (un trabalenguas) y varias de "todo en el movil"
+   * que sonaban a videos de entrenamiento. Se vigila para que no vuelva ninguna de las descartadas.
+   */
+  comprobar(
+    /todo tu entrenamiento en tu bolsillo/i.test(h1),
+    'El titular es el elegido',
+    h1,
+  )
+  comprobar(
+    !/libreta de entrenamiento que ya llevas/i.test(h1),
+    'Y no ha vuelto el titular anterior',
+    h1,
+  )
+  // El titulo de la pestaña tiene que ir a juego con el titular, no decir otra cosa.
+  comprobar(
+    (await pagina.title()).includes('bolsillo'),
+    'El titulo de la pestaña va a juego con el titular',
+    await pagina.title(),
+  )
 
   // Los textos y las tarjetas tienen que venir de los datos de la app.
   const caracteristicas = await pagina.locator('#lista-caracteristicas li').count()
@@ -275,7 +296,7 @@ try {
   comprobar(
     !/Mestre/i.test(textoWeb),
     'Y no queda el apellido equivocado (Mestre)',
-    (textoWeb.match(/[^\n]*Mestre[^\n]*/) ?? [''])[0].trim(),
+    (textoWeb.match(/[^\n]*Mestre[^\n]*/i) ?? [''])[0].trim(),
   )
   comprobar(
     (await pagina.locator('meta[name="author"]').getAttribute('content'))?.includes('Muela'),
@@ -593,14 +614,52 @@ comprobar(
   inexistentes.join(', '),
 )
 
+/**
+ * Detecta si esta red esta interceptando el HTTPS (filtro con certificado propio).
+ *
+ * Paso de verdad desde la red del colegio: kairosentrena.com llegaba con un certificado emitido por
+ * la GVA y todas las peticiones fallaban, con la web perfecta. Distinguirlo evita dos males: dar
+ * fallos falsos y, peor, que alguien "arregle" una web que no estaba rota.
+ */
+async function redInterceptada() {
+  const { connect } = await import('node:tls')
+  const DE_FIAR = ["let's encrypt", 'digicert', 'sectigo', 'google trust', 'globalsign', 'cloudflare', 'amazon', 'comodo', 'entrust', 'godaddy', 'zerossl', 'harica', 'izenpe', 'firmaprofesional']
+  return new Promise((listo) => {
+    const socket = connect({ host: 'kairosentrena.com', port: 443, servername: 'kairosentrena.com', rejectUnauthorized: false }, () => {
+      const certificado = socket.getPeerCertificate()
+      socket.end()
+      const emisor = (certificado?.issuer?.O ?? certificado?.issuer?.CN ?? '').toLowerCase()
+      listo(Boolean(emisor) && !DE_FIAR.some((a) => emisor.includes(a)))
+    })
+    socket.on('error', () => listo(false))
+    socket.setTimeout(8000, () => {
+      socket.destroy()
+      listo(false)
+    })
+  })
+}
+
 /* --------------------- la direccion publicada de verdad --------------------- */
 /*
- * Lo que ya esta en GitHub Pages, no lo que hay en esta carpeta. Sin esto se puede dar por bueno
- * un cambio que nunca llego a publicarse.
+ * Lo que ya esta publicado en internet, no lo que hay en esta carpeta. Sin esto se puede dar por
+ * bueno un cambio que nunca llego a publicarse.
  */
 console.log(`\n== Publicada (${PUBLICADA}) ==`)
 if (process.argv.includes('--sin-publicada')) {
   console.log('  (omitida a proposito)')
+} else if (await redInterceptada()) {
+  /*
+   * Si esta red intercepta el HTTPS (pasa en la red del colegio: el certificado lo emite la GVA en
+   * lugar de GitHub), aqui no se puede comprobar la direccion publicada: todas las peticiones
+   * fallan, y dar fallos haria buscar un problema en la web que no existe.
+   *
+   * No se calla: se avisa y se sigue. La comprobacion de verdad la hace el flujo de publicacion
+   * desde GitHub, que si llega a la direccion.
+   */
+  console.log('  AVISO Esta red intercepta el HTTPS, asi que no se puede comprobar la direccion')
+  console.log('        publicada desde aqui. Se omite (no es un fallo de la web).')
+  console.log('        El flujo de publicacion ya la comprueba desde GitHub al publicar.')
+  avisos.push('Comprobacion de la direccion publicada omitida: esta red intercepta el HTTPS')
 } else {
   const vivo = await navegador.newContext({ viewport: { width: 1200, height: 900 } })
   const pVivo = await vivo.newPage()

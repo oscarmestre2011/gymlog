@@ -133,6 +133,49 @@ async function consultarPublico(dominio, tipo) {
   return { valores: [], servidor: null }
 }
 
+/** Autoridades de certificacion de fiar. Si el certificado no es de una de estas, hay alguien en medio. */
+const AUTORIDADES_DE_FIAR = [
+  "let's encrypt",
+  'digicert',
+  'sectigo',
+  'google trust',
+  'globalsign',
+  'cloudflare',
+  'amazon',
+  'comodo',
+  'entrust',
+  'godaddy',
+  'starfield',
+  'zerossl',
+  'buypass',
+  'harica',
+  'izenpe',
+  'firmaprofesional',
+  'ac camerfirma',
+]
+
+/**
+ * Devuelve el emisor del certificado si NO parece una autoridad publica de fiar (o sea, si alguien
+ * esta interceptando la conexion). Null si todo parece normal.
+ */
+async function certificadoInterceptado(dominio) {
+  const { connect } = await import('node:tls')
+  return new Promise((listo) => {
+    const socket = connect({ host: dominio, port: 443, servername: dominio, rejectUnauthorized: false }, () => {
+      const certificado = socket.getPeerCertificate()
+      socket.end()
+      const emisor = certificado?.issuer?.O ?? certificado?.issuer?.CN ?? ''
+      const deFiar = AUTORIDADES_DE_FIAR.some((a) => emisor.toLowerCase().includes(a))
+      listo(deFiar || !emisor ? null : `${emisor} (${certificado?.issuer?.CN ?? ''})`)
+    })
+    socket.on('error', () => listo(null))
+    socket.setTimeout(8000, () => {
+      socket.destroy()
+      listo(null)
+    })
+  })
+}
+
 async function revisar() {
   console.log(`\n=== ${dominio} ===\n`)
 
@@ -209,8 +252,40 @@ async function revisar() {
     )
   }
 
+  /*
+   * El TXT de Google Search Console. Este SI importa: es lo que mantiene verificada la propiedad. Si
+   * se borra (es facil, al tocar otros TXT del dominio), Search Console deja de dar datos y se
+   * pierde el historial de con que palabras encuentra la gente la web.
+   */
+  const { valores: txtRaiz } = await consultarPublico(dominio, 'TXT')
+  const google = txtRaiz.find((v) => v.startsWith('google-site-verification='))
+  comprobar(
+    Boolean(google),
+    'Esta el registro de Google Search Console (si se borra, se pierde la verificacion)',
+    google ? `${google.slice(0, 26)}…` : 'no encontrado',
+  )
+
   /* --------------------------- 2. HTTPS y contenido ------------------------ */
   console.log('\n2. La web responde')
+
+  /*
+   * ANTES de nada: comprobar si esta red esta interceptando el HTTPS.
+   *
+   * Esto no es paranoia, paso de verdad: desde la red del colegio, kairosentrena.com llegaba con un
+   * certificado emitido por la GVA (la Generalitat) en lugar del de GitHub, y todas las peticiones
+   * fallaban. La web estaba perfecta: era la red. Sin esta comprobacion, la herramienta decia "la
+   * web no responde" y mandaba a buscar un fallo donde no habia ninguno.
+   */
+  const interceptado = await certificadoInterceptado(dominio)
+  if (interceptado) {
+    console.log(
+      `  OJO   Esta red esta interceptando el HTTPS: el certificado de ${dominio} lo emite\n` +
+        `        "${interceptado}", que no es una autoridad publica. Los fallos de conexion de\n` +
+        '        aqui abajo son de la red (filtro del colegio o del proveedor), no de la web.\n' +
+        '        Para comprobarlo de verdad, mira desde otro sitio: el flujo de publicacion lo hace\n' +
+        '        desde GitHub, que si llega.',
+    )
+  }
   for (const protocolo of ['https', 'http']) {
     for (const host of [dominio, `www.${dominio}`]) {
       const url = `${protocolo}://${host}/`

@@ -89,6 +89,18 @@ Ultima revision: 16 de septiembre de 2026, con la version **1.1.0** publicada.
 - **`git checkout -- archivo` NO deshace tu ultimo cambio: lo restaura al ultimo commit** (que es
   donde ya estaba el cambio malo). Paso al intentar revertir la carpeta de compilacion. Para
   revertir de verdad hay que editar el archivo, o `git revert`.
+- **GitHub Pages puede estar publicando DOS cosas a la vez.** El repositorio de la web tenia
+  `build_type: legacy`, es decir, publicando la RAMA `main` ademas de mi flujo. Como la carpeta de
+  la app se genera al publicar (y esta en el `.gitignore`), esa publicacion salia SIN la app y
+  PISABA la de mi flujo: `kairosentrena.com/app` aparecia y desaparecia, y costo tres rondas de
+  buscar el fallo en el sitio equivocado. Se comprueba con la API (`pages.build_type` debe ser
+  `workflow`) y el flujo ahora se verifica a si mismo antes y despues de publicar.
+- **Una red con filtro puede interceptar el HTTPS y hacer creer que tu web esta rota.** Desde la red
+  del colegio, `kairosentrena.com` llegaba con un certificado emitido por la GVA en vez del de
+  GitHub: todas las peticiones fallaban y la herramienta decia "la web no responde". La web estaba
+  perfecta. Ahora el verificador mira el emisor del certificado y avisa de que el fallo es de la
+  red. Regla: cuando todo falla de golpe, comprobar la RED antes que el codigo (mirar el emisor del
+  certificado, o probar desde otro sitio).
 
 ## Pendiente
 
