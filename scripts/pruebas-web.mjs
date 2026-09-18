@@ -255,9 +255,32 @@ try {
     !/no es entrenar\. es acordarse/i.test(principio),
     'Ya no se apoya en "la memoria falla" como argumento principal',
   )
+  // El argumento de la seccion del principio.
   comprobar(
     (await pagina.locator('a[href="#progresion"]').count()) >= 1,
     'Hay al menos un enlace que lleva al principio desde el resto de la pagina',
+  )
+
+  /*
+   * Quien ha hecho la app. Importa mas de lo que parece: es lo que la diferencia de las otras mil
+   * apps de gimnasio. Y el apellido estuvo mal publicado un tiempo (decia Mestre, que venia de la
+   * direccion de correo), asi que se vigila que sea Muela.
+   */
+  const textoWeb = await pagina.locator('body').innerText()
+  comprobar(
+    textoWeb.includes('Óscar Muela') && /maestro de Educación Física/i.test(textoWeb),
+    'La web dice quien la ha hecho, con nombre y profesion',
+    (textoWeb.match(/[^\n]*Óscar Muela[^\n]*/) ?? ['(no aparece)'])[0].trim().slice(0, 90),
+  )
+  comprobar(
+    !/Mestre/i.test(textoWeb),
+    'Y no queda el apellido equivocado (Mestre)',
+    (textoWeb.match(/[^\n]*Mestre[^\n]*/) ?? [''])[0].trim(),
+  )
+  comprobar(
+    (await pagina.locator('meta[name="author"]').getAttribute('content'))?.includes('Muela'),
+    'El autor de la pagina tambien es el correcto',
+    await pagina.locator('meta[name="author"]').getAttribute('content'),
   )
 
   /*

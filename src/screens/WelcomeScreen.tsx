@@ -1,5 +1,6 @@
 import { saveSettings } from '../db/repository'
 import { KairosMark } from '../components/KairosMark'
+import { AUTOR } from '../lib/kairos'
 
 /**
  * Pantalla de bienvenida: se ve UNA vez, la primera vez que se abre la app.
@@ -106,7 +107,7 @@ export function WelcomeScreen({
       </button>
 
       <p className="tiny muted center" style={{ marginTop: 4 }}>
-        Kairós · Registro de entrenamiento
+        Kairós · Registro de entrenamiento · {AUTOR.firma}
       </p>
     </div>
   )

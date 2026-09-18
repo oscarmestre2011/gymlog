@@ -11,6 +11,7 @@ import { AYUDA } from './ayuda'
 import { versionMasReciente, VERSIONES } from './changelog'
 import {
   APOYO,
+  AUTOR,
   CANTIDADES_APOYO,
   ENLACE_APOYO,
   ENLACE_APP,
@@ -183,6 +184,28 @@ describe('apoyo voluntario (donaciones)', () => {
     expect(opcionesDeApoyo().length).toBe(CANTIDADES_APOYO.length)
   })
 })
+describe('quien ha hecho la app', () => {
+  it('la firma lleva nombre y profesion', () => {
+    expect(AUTOR.nombre).toBe('Óscar Muela')
+    expect(AUTOR.profesion).toBe('maestro de Educación Física')
+    expect(AUTOR.firma).toContain(AUTOR.nombre)
+    expect(AUTOR.firma).toContain('Educación Física')
+  })
+
+  it('el apellido esta bien escrito: es Muela, no Mestre', () => {
+    // Mestre se colo en la web (venia de la direccion de correo oscarmestre2011) y estuvo publicado
+    // un tiempo. Esta comprobacion evita que vuelva.
+    expect(AUTOR.firma).not.toMatch(/Mestre/i)
+    expect(JSON.stringify(AUTOR)).not.toMatch(/Mestre/i)
+  })
+
+  it('la profesion se dice entera, no abreviada', () => {
+    // "profesor" o "EF" a secas no dicen lo que hace. Y es justo lo que diferencia la app.
+    expect(AUTOR.profesion).toMatch(/maestro/i)
+    expect(AUTOR.profesion).toMatch(/Educación Física/i)
+  })
+})
+
 describe('enlaces y version que se anuncian', () => {
   it('la direccion de la app es la publicada de verdad', () => {
     expect(ENLACE_APP).toBe('https://kairosentrena.com/app/')

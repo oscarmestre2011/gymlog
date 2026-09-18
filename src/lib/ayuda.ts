@@ -337,7 +337,7 @@ export const AYUDA: PreguntaAyuda[] = [
     categoria: 'problemas',
     pregunta: '¿Dónde cuento una mejora o un fallo?',
     respuesta: [
-      'Habla con quien te pasó el enlace: esta app la hizo una persona, no una empresa, y las sugerencias se tienen en cuenta de verdad.',
+      'Habla con quien te pasó el enlace: esta app la hizo Óscar Muela, maestro de Educación Física, no una empresa, y las sugerencias se tienen en cuenta de verdad.',
       'Si algo falla, cuenta en qué pantalla estabas, qué tocaste y qué esperabas que pasara. Con esos tres datos se puede reproducir y arreglar; con un «no funciona» no.',
       'Si el problema es con una copia o con los datos, dilo también: son los fallos que más urge arreglar.',
     ],

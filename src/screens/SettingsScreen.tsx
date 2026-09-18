@@ -13,7 +13,7 @@ import { seedIfEmpty } from '../db/seed'
 import { ConfirmDialog } from '../components/Modal'
 import { descargarArchivo, descargarCopiaDeSeguridad } from '../lib/descargar'
 import { VERSIONES } from '../lib/changelog'
-import { APOYO, ENLACE_APOYO, opcionesDeApoyo } from '../lib/kairos'
+import { APOYO, AUTOR, ENLACE_APOYO, opcionesDeApoyo } from '../lib/kairos'
 import { audioDisponible, duracionDelAviso } from '../lib/audio'
 import { Novedades } from '../components/Novedades'
 import {
@@ -645,7 +645,11 @@ export function SettingsScreen({
 
         <div className="kv">
           <span className="k">Creada por</span>
-          <span className="v">Óscar</span>
+          <span className="v">{AUTOR.nombre}</span>
+        </div>
+        <div className="kv">
+          <span className="k">Profesión</span>
+          <span className="v">{AUTOR.profesion}</span>
         </div>
         <div className="kv">
           <span className="k">Versión</span>

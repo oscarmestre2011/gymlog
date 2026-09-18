@@ -28,6 +28,21 @@ export const ENLACE_APP = 'https://kairosentrena.com/app/'
 /** Direccion de la web de presentacion. */
 export const ENLACE_WEB = 'https://kairosentrena.com/'
 
+/**
+ * Quien ha hecho la app. Fuente unica: lo usan la web y la pantalla de Ajustes.
+ *
+ * Se escribe con nombre y profesion a proposito: es lo que diferencia a Kairos de las otras mil
+ * apps de gimnasio (que la ha hecho un maestro de Educacion Fisica, no una empresa).
+ *
+ * OJO con el apellido: es MUELA, no Mestre (Mestre se coló por la direccion de correo).
+ */
+export const AUTOR = {
+  nombre: 'Óscar Muela',
+  profesion: 'maestro de Educación Física',
+  /** Como se firma en una linea. */
+  firma: 'Óscar Muela — maestro de Educación Física',
+}
+
 /* ------------------------------- apoyo voluntario ------------------------------- */
 
 /**

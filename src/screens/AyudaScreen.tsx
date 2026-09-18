@@ -7,6 +7,7 @@ import {
   cuantasPreguntas,
   type CategoriaAyuda,
 } from '../lib/ayuda'
+import { AUTOR } from '../lib/kairos'
 
 /**
  * Ayuda: instrucciones y preguntas frecuentes.
@@ -127,7 +128,7 @@ export function Ayuda() {
       ))}
 
       <p className="tiny muted" style={{ textAlign: 'center' }}>
-        Falta algo en la ayuda? Dilo y se añade: esta app la hizo una persona, no una empresa.
+        ¿Falta algo en la ayuda? Dilo y se añade: esta app la hizo {AUTOR.firma}, no una empresa.
       </p>
     </div>
   )
