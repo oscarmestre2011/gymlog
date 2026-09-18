@@ -639,6 +639,57 @@ async function redInterceptada() {
   })
 }
 
+/* ---------------------------- lo que lee Google ----------------------------- */
+/*
+ * El robots.txt y el sitemap son los dos archivos con los que Google encuentra la web. Es facil
+ * romperlos sin darse cuenta (al tocar el sitemap desde el generador, o al cambiar el dominio) y
+ * nadie se entera hasta que las visitas bajan meses despues. Se comprueban aqui.
+ */
+console.log('\n== Lo que lee Google ==')
+try {
+  const robots = await readFile(join(RAIZ, 'robots.txt'), 'utf8')
+  comprobar(/User-agent:\s*\*/i.test(robots), 'El robots.txt deja entrar a los buscadores')
+  comprobar(
+    /^Allow:\s*\/\s*$/im.test(robots),
+    'Y no bloquea ninguna parte del sitio',
+    (robots.match(/Disallow:.*/gi) ?? []).join(' '),
+  )
+  comprobar(
+    robots.includes('Sitemap: https://kairosentrena.com/sitemap.xml'),
+    'Y anuncia el sitemap en la direccion correcta',
+    (robots.match(/Sitemap:.*/i) ?? ['(no lo anuncia)'])[0],
+  )
+} catch (error) {
+  comprobar(false, 'Se puede leer el robots.txt', String(error).split('\n')[0])
+}
+
+try {
+  const sitemap = await readFile(join(RAIZ, 'sitemap.xml'), 'utf8')
+  comprobar(sitemap.trimStart().startsWith('<?xml'), 'El sitemap empieza por la declaracion XML (Google lo exige)')
+  comprobar(
+    !/^\s+<\?xml/.test(sitemap),
+    'Y no tiene espacios ni saltos antes de la declaracion (es un fallo tipico)',
+  )
+  const direcciones = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
+  comprobar(
+    direcciones.includes('https://kairosentrena.com/'),
+    'El sitemap incluye la pagina de presentacion',
+    direcciones.join(', '),
+  )
+  comprobar(
+    direcciones.includes('https://kairosentrena.com/app/'),
+    'Y tambien la app (es donde quiere llegar la gente)',
+    direcciones.join(', '),
+  )
+  comprobar(
+    direcciones.every((d) => d.startsWith('https://kairosentrena.com/')),
+    'Ninguna direccion del sitemap apunta a otro sitio',
+    direcciones.join(', '),
+  )
+} catch (error) {
+  comprobar(false, 'Se puede leer el sitemap.xml', String(error).split('\n')[0])
+}
+
 /* --------------------- la direccion publicada de verdad --------------------- */
 /*
  * Lo que ya esta publicado en internet, no lo que hay en esta carpeta. Sin esto se puede dar por
