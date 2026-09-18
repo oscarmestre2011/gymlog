@@ -193,10 +193,18 @@ describe('quien ha hecho la app', () => {
   })
 
   it('el apellido esta bien escrito: es Muela, no Mestre', () => {
-    // Mestre se colo en la web (venia de la direccion de correo oscarmestre2011) y estuvo publicado
-    // un tiempo. Esta comprobacion evita que vuelva.
+    /*
+     * Mestre se colo en la web (venia de la direccion de correo oscarmestre2011) y estuvo publicado
+     * un tiempo.
+     *
+     * OJO con la direccion del repositorio: `oscarmestre2011.github.io/gymlog` se compila DENTRO de
+     * la app (el aviso de version nueva la lleva), asi que buscarla en el archivo compilado daria un
+     * falso positivo. Por eso se quita antes de comprobar, en lugar de prohibir la palabra.
+     */
+    const SIN_DIRECCIONES = /oscarmestre2011\.github\.io|github\.com\/oscarmestre2011/g
+    const limpio = JSON.stringify(AUTOR).replace(SIN_DIRECCIONES, '')
+    expect(limpio).not.toMatch(/Mestre/i)
     expect(AUTOR.firma).not.toMatch(/Mestre/i)
-    expect(JSON.stringify(AUTOR)).not.toMatch(/Mestre/i)
   })
 
   it('la profesion se dice entera, no abreviada', () => {
